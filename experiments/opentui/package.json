@@ -1,0 +1,8 @@
+{
+  "name": "project-template-opentui-experiment",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "dev": "bun src/index.ts" },
+  "dependencies": { "@opentui/core": "^0.6.0" }
+}

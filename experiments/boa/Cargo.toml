@@ -1,0 +1,8 @@
+[package]
+name = "godspeed-boa-experiment"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+boa_engine = "0.22"

@@ -16,9 +16,8 @@ export const NoteSchema = v.object({
 export type CreateNote = v.InferOutput<typeof CreateNoteSchema>;
 export type Note = v.InferOutput<typeof NoteSchema>;
 
-// Valibot implements the Standard Schema V1 contract through the
-// ~standard property on schemas. Consumers should target that interface,
-// rather than depend on Valibot-specific internals.
+export { validateStandard } from "./standard";
+
 export function parseCreateNote(value: unknown): CreateNote {
   return v.parse(CreateNoteSchema, value);
 }
