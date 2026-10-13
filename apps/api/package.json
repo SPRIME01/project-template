@@ -1,0 +1,12 @@
+{
+  "name": "@template/api",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {"dev": "bun --watch src/index.ts", "start": "bun src/index.ts"},
+  "dependencies": {
+    "@template/contracts": "workspace:*",
+    "@template/core": "workspace:*",
+    "@template/db": "workspace:*"
+  }
+}

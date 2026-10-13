@@ -1,0 +1,14 @@
+{
+  "name": "@template/db",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {".": "./src/index.ts"},
+  "dependencies": {
+    "@template/contracts": "workspace:*",
+    "@template/core": "workspace:*",
+    "kysely": "^0.28.0",
+    "kysely-postgres-js": "^3.0.0",
+    "postgres": "^3.4.0"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.15.0/.schema/devbox.schema.json",
+  "packages": ["bun@latest", "just@latest", "rustc@latest", "cargo@latest", "uv@latest"],
+  "shell": {
+    "init_hook": ["echo 'GodSpeed template toolchain ready'"],
+    "scripts": {
+      "setup": ["just setup"],
+      "check": ["just check"]
+    }
+  }
+}

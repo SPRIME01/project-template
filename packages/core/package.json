@@ -1,0 +1,8 @@
+{
+  "name": "@template/core",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {".": "./src/index.ts"},
+  "dependencies": {"@template/contracts": "workspace:*"}
+}
