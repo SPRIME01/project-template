@@ -1,0 +1,34 @@
+name: DomainForge semantic validation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".sea/**"
+      - ".github/workflows/domainforge-validation.yml"
+  pull_request:
+    paths:
+      - ".sea/**"
+      - ".github/workflows/domainforge-validation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sea:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install published DomainForge CLI
+        run: npm install --global @godspeedai/domainforge
+      - name: Validate the reference semantic source
+        run: domainforge validate --format human .sea/notes.sea
+      - name: Assert the compiler emits parsable IR
+        run: |
+          domainforge parse --format json .sea/notes.sea > /tmp/domainforge-model.json
+          node -e "JSON.parse(require('fs').readFileSync('/tmp/domainforge-model.json','utf8')); console.log('DOMAINFORGE_IR_OK')"

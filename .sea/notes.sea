@@ -1,16 +1,11 @@
-@namespace "project_template.notes"
+// Illustrative semantic source; the contract/code projection is manual today.
+// Always run DomainForge validation before using this model as a source.
+@namespace "project_template_notes"
 @version "0.1.0"
-@owner "project-owner"
-@profile "default"
+@owner "project-template"
 
-// Illustrative canonical source; no code generation claim is made.
-// Reconcile this model with real application requirements before promotion.
-Entity "Actor"
-Entity "Note"
+Entity "Actor" in project_template_notes
+Entity "Note" in project_template_notes
 
-Resource "NoteRecord" units
-
+Resource "NoteRecord" units in project_template_notes
 Flow "NoteRecord" from "Actor" to "Note" quantity 1
-
-Policy positive_note_flow as:
-    forall f in flows: (f.quantity > 0)
