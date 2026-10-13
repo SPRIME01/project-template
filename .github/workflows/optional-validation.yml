@@ -130,7 +130,12 @@ jobs:
           done
           test "$ready" -eq 1 || { cat /tmp/tauri-window.log; exit 1; }
           echo TAURI_GUI_NATIVE_IPC_DATABASE_BOOT_OK
-          xdotool search --name "GodSpeed Project Template" | head -n1 | xargs -r xdotool windowclose
+          window_id="$(xdotool search --name 'GodSpeed Project Template' 2>/dev/null | head -n1 || true)"
+          if [ -n "$window_id" ]; then
+            xdotool windowclose "$window_id" || true
+          else
+            echo "Window vanished before close; investigating process state"
+          fi
           for attempt in $(seq 1 20); do
             if ! kill -0 "$child" 2>/dev/null; then break; fi
             sleep 1
