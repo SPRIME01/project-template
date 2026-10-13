@@ -47,6 +47,9 @@ pub fn run() {
 
 pub async fn desktop_smoke(binary: PathBuf, app_data: PathBuf) -> Result<(), String> {
     let id = format!("template-smoke-{}", uuid::Uuid::new_v4().simple());
+    // Isolate all test data under a uniquely named child directory. Even a caller
+    // passing the production app data path cannot make the test drop live data.
+    let app_data = app_data.join(&id);
     let first = DesktopDatabase::new(binary.clone(), app_data.clone(), id.clone());
     let note = first.create(CreateNote { title: "survives restart".into(), body: "native desktop".into() }).await?;
     if !first.list().await?.iter().any(|n| n.id == note.id) {
