@@ -143,6 +143,10 @@ jobs:
           if kill -0 "$child" 2>/dev/null; then echo "GUI did not exit"; exit 1; fi
           wait "$child" || true
           info="$("$PG0_BIN" info --name godspeed-project-template-desktop -o json)"
+          echo "GUI database status following window close:"
+          printf '%s\n' "$info" | python3 -c 'import json,sys; d=json.load(sys.stdin); print("running=", d.get("running"), "pid=", d.get("pid"), "port=", d.get("port"))'
+          echo "Last native application messages:"
+          tail -n 100 /tmp/tauri-window.log || true
           printf '%s' "$info" | python3 -c 'import json,sys; sys.exit(json.load(sys.stdin).get("running",False))'
           echo TAURI_GUI_GRACEFUL_SHUTDOWN_OK
           GUI_TEST
