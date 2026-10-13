@@ -16,6 +16,16 @@ async fn create_note(input: CreateNote, database: State<'_, DesktopDatabase>) ->
 
 pub fn run() {
     let app = tauri::Builder::default()
+        // Close the dedicated PostgreSQL instance before the WebView is
+        // destroyed. Exit remains a fallback for non-window exit paths.
+        .on_window_event(|window, event| {
+            if matches!(event, tauri::WindowEvent::CloseRequested { .. }) {
+                let database = window.state::<DesktopDatabase>();
+                if let Err(err) = tauri::async_runtime::block_on(database.shutdown()) {
+                    eprintln!("Desktop database close-request shutdown failed: {err}");
+                }
+            }
+        })
         .plugin(tauri_plugin_single_instance::init(|app, _, _| {
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.set_focus();
