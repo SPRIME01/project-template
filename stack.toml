@@ -1,8 +1,6 @@
-# Human- and agent-readable toolchain manifest.
-# Technical architecture metadata; not a replacement for a DomainForge .sea model.
 [stack]
 name = "godspeed-project-template"
-version = "0.1.0"
+version = "0.2.0"
 primary_language = "typescript"
 native_language = "rust"
 application_runtime = "bun"
@@ -15,7 +13,8 @@ dialect = "kysely-postgres-js"
 client = "postgres"
 database = "postgresql"
 local_distribution = "pg0"
-default_client = "postgres.js"
+default_javascript_client = "postgres.js"
+desktop_native_client = "sqlx"
 bun_sql_is_default = false
 
 [contracts]
@@ -30,8 +29,16 @@ web = "apps/web"
 desktop = "apps/web/src-tauri"
 cli = "apps/cli"
 
+[desktop]
+pg0_release = "v0.15.2"
+bundling = "sha256-verified-platform-binary"
+runtime_database = "postgresql"
+backend = "rust-sqlx-narrow-tauri-ipc"
+bun_sidecar_required = false
+standalone_smoke = "optional-validation-tauri-linux-job"
+
 [experimental]
-ruvector_pg0 = "pending-postgresql18-abi-validation"
+ruvector_pg0 = "native-extension-pg18-abi-validation-pending"
 servo = "research-only"
 boa = "experiments/boa"
 opentui = "experiments/opentui"

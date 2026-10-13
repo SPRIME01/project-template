@@ -1,65 +1,41 @@
 # Architecture and constraints
 
-## The default vertical slice
+## Two executable paths, one PostgreSQL engine
 
-~~~text
-.sea/notes.sea (illustrative canonical domain representation)
-      | manual contract translation until projection is validated
-      v
-@template/contracts (Valibot, Standard Schema V1)
-      |
-      v
-@template/core (NoteService + NoteRepository port)
-      |
-      +--- @template/db (Kysely -> kysely-postgres-js -> Postgres.js)
-      |                         |
-      |                       pg0 / PostgreSQL
-      |
-      +--- apps/api (Bun.serve HTTP boundary)
-                |
-         +------+--------+
-         |               |
-      apps/web         apps/cli
-      React/Vite       headless CLI
-         |
-    Tauri 2 WebView (optional shell)
-~~~
+Browser/CLI: React -> Bun API -> Valibot -> domain service -> Kysely -> Postgres.js -> PostgreSQL (pg0)
 
-Core types and behavior must remain independent of database server placement and the UI. Postgres.js is a client. pg0 is a distribution/launcher of PostgreSQL. No database access belongs in frontend code.
+Desktop: React -> Tauri IPC -> narrow Rust adapter -> SQLx -> PostgreSQL (pg0 included in installer)
 
-## Boundary contracts
+The JavaScript default remains Postgres.js. SQLx is a separately governed Rust-only adapter for desktop. There is **no HTTP or Bun API sidecar** inside the desktop app. React still runs in the system WebView.
 
-- Contract: request validation is strict and performed before invoking domain operations. TypeScript types alone are not runtime evidence.
-- Core: receives an already validated CreateNote and depends on the NoteRepository port, not SQL.
-- Persistence: repository adapter maps domain Note to SQL columns. Migrations are versioned through Kysely's Migrator.
-- API: localhost-only development server. Request errors do not disclose database internals.
-- Web: browser client calling a separate API, not a database client.
-- Desktop: Tauri embeds web assets. Currently relies on a separately running localhost Bun API; packaging is NOT self-contained.
-- Native layer: add narrow Tauri commands only after determining permissions and implementing tests.
-- DomainForge: .sea can model the domain, but a passing parser alone does not prove the TS translation matches the source.
+## Desktop persistence and recovery
 
-## Architectural decisions
+1. At build time, apps/web/scripts/prepare-desktop.ts retrieves the official pg0 v0.15.2 binary for the build OS/CPU and verifies its release SHA-256. Tauri packages that binary. It does not download PostgreSQL at application runtime.
+2. On first desktop command, the Rust backend creates app-local data, a random local database credential, and starts pg0 bound to 127.0.0.1. Pg0 extracts its embedded PostgreSQL engine into the user profile; the cluster data lives in the app-local data directory.
+3. The backend reads pg0 info in JSON to determine the real port and URI. It validates loopback host, expected database and expected user before opening a SQLx pool.
+4. CREATE TABLE IF NOT EXISTS initializes the Notes schema, and narrow IPC commands provide list/create operations.
+5. On normal application exit, the backend closes the pool and stops a database instance **only if the app started it**. Database files are never deleted on normal exit.
+6. The desktop smoke command writes a record, fully stops PostgreSQL, recreates the client, restarts PostgreSQL and verifies that the record persists.
 
-- Kysely rather than a heavy ORM: query types without losing PostgreSQL-native features.
-- Postgres.js rather than Bun.SQL: keeps client portable to Node and Bun.
-- Valibot with Standard Schema V1: validation abstraction independent of callers.
-- Bun for web tooling and HTTP runtime; Rust for native facilities. Do not assume Bun executes inside the Tauri WebView.
-- UI is a projection. CLI, web and Tauri can share behavior without sharing rendering technology.
+The smoke uses a UUID-named **test-only instance** and deletes only that instance after verification. It must never run against real user data.
 
-## Platform-specific runtime realities
+## Security and portability caveats
 
-On Windows, Tauri defaults to WebView2 (Chromium/V8); on macOS and Linux it uses WebKit. Bun uses JavaScriptCore. Servo uses SpiderMonkey; Boa is an alternative Rust JS interpreter. Merely writing Rust does not remove the JS engine used to run a React web frontend.
+- Only list_notes and create_note are invokable. The renderer does not receive SQL or filesystem/process APIs.
+- pg0 listens on loopback with a random credential, not the public example password.
+- Local credential is created owner-only on Unix, but the instance metadata and Windows ACLs need a separate audit.
+- Initial password is visible briefly as a command-line argument to the local operating system: replace with a protected provisioning mechanism before handling sensitive data.
+- UI data comes back as the same Note shape as the web API. Rust and Valibot contracts are currently duplicated; semantic parity needs explicit testing.
+- pg0 system shared libraries still apply on supported Linux distributions.
+- Single-instance plugin discourages concurrent desktop database starts; crash and contention tests are still required.
+- Packaged installer success alone does not prove live GUI interaction on all OSes.
 
-On packaged Tauri, web origins differ by OS. This template's API development CORS allowlist is configured for the Vite origin. The production/offline path must be separately implemented and verified before a real desktop distribution.
+## RuVector is a genuine PostgreSQL extension
 
-## Unresolved gates
+Upstream RuVector contains crates/ruvector-postgres and implements CREATE EXTENSION ruvector. The unresolved task is producing an ABI-compatible binary for pg0's PostgreSQL 18 and packaging the DLL/shared object plus SQL/control files. Historical docs use cargo-pgrx 0.12.9 and PG16, and the upstream CI has tested PG17, even though the project changelog claims PG18 support. Do not assume it can be copied directly into pg0 without rebuilding and validating.
 
-1. Generate and commit bun.lock; prove clean installs.
-2. Tauri build prerequisites, desktop app icons, release CSP and platform packaging.
-3. Bundled Bun backend or native Rust persistence and secure desktop IPC.
-4. RuVector PostgreSQL extension ABI/build compatibility with pg0 PostgreSQL 18.
-5. DomainForge projection generation into schema/contracts.
-6. Optional OpenTUI UI and Servo/Boa experiments.
-7. Production auth, tenancy, observability, backup/recovery and deployment.
+The existing pg0 instance includes pgvector, not RuVector. See docs/experiments/ruvector-pg0.md and GitHub issue #1.
 
-See docs/validation.md for measurable checks.
+## Deferred
+
+Servo browser embedding; DomainForge-generated code/contracts; RuVector PostgreSQL 18 integration; full multi-OS installed-GUI verification; production credentials, backup/restore, security review and signing.

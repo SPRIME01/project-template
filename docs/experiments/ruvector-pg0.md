@@ -1,20 +1,20 @@
-# RuVector + pg0 compatibility experiment
+# RuVector PostgreSQL extension: genuine, integration outstanding
 
-Status: unresolved. pg0 currently bundles PostgreSQL 18 and pgvector. It does not thereby bundle RuVector.
+RuVector **does have a PostgreSQL extension**. Upstream source is https://github.com/ruvnet/RuVector/tree/main/crates/ruvector-postgres. It documents CREATE EXTENSION ruvector, the ruvector dimensional type, and the ruhnsw access method.
 
-Run bun run db:ruvector to read pg_available_extensions using the accepted Postgres.js driver.
+Our pg0 v0.15.2 bundle runs PostgreSQL 18, containing pgvector 0.8.5. The earlier CI query confirmed no installed ruvector extension.
 
-## Experiment protocol
+The engineering gap is extension ABI and distribution, not the existence of the extension. RuVector upstream's older documented pgrx 0.12.9 build targets PG16 and its extension CI has checked PG17. Newer pgrx >=0.16 adds PG18 support, but migrating the extension and passing its tests against pg0's particular PostgreSQL build requires evidence.
 
-1. Record pg0 version, PostgreSQL server_version, pg_config path and OS/architecture.
-2. Inspect RuVector's PostgreSQL extension build matrix for a PostgreSQL 18 compatible pgrx build.
-3. Determine where pg0 places extension control files, SQL files and native libraries; do not modify live data directories without backups.
-4. Build a disposable instance and verify a native module's PostgreSQL major ABI and dynamic dependencies.
-5. Test CREATE EXTENSION ruvector in isolation, then a small ruvector(3) vector table, index and deterministic nearest-neighbor queries.
-6. Compare against pgvector for correctness, failure behavior, memory and latency.
-7. Repeat on Windows, WSL/Linux and macOS before calling the combination cross-platform.
-8. Document restore and clean uninstall of extension artifacts.
+## Acceptance protocol
 
-Hard stop: unavailable PostgreSQL 18 target, incompatible shared libraries, or no reliable rollback. Never silently substitute pgvector and call it RuVector.
+1. Pin RuVector commit, pg0 tag, and PostgreSQL 18 server build.
+2. Confirm pg18 support in extension Cargo features; update pgrx bindings if required (fork only when necessary).
+3. Extract bundled pg0 on disposable instance, locate pg_config, include/library and extension target paths.
+4. Build extension library/control/SQL files for exact PostgreSQL ABI on Linux, Windows and macOS.
+5. CREATE EXTENSION ruvector; create ruvector(3) column, build ruhnsw index, insert test vectors and prove nearest neighbors.
+6. Restart PostgreSQL and repeat query; run dump/restore and extension upgrade/rollback.
+7. Package vetted extension files in Tauri build; **never** install native shared libraries dynamically from arbitrary URLs on desktop launch.
+8. Distinguish an optional RuVector gate from default PostgreSQL availability; do not silently use pgvector as RuVector.
 
-Alternatives are a separately managed PostgreSQL installation with RuVector, or an explicitly independent embedded RuVector storage adapter. They have different semantics, durability and maintenance costs.
+Fail closed on PostgreSQL-ABI mismatch or data-loss risk.

@@ -1,36 +1,39 @@
 # Validation and evidence
 
-## Acceptance hierarchy
+## Core baseline
 
-- Core: .github/workflows/ci.yml checks TypeScript, unit tests, web build, pg0 migrations and PostgreSQL roundtrip.
-- Optional adapters: .github/workflows/optional-validation.yml checks Boa, OpenTUI under a real pseudo-terminal, and Tauri compile plus Linux .deb bundle.
-- DomainForge: .github/workflows/domainforge-validation.yml compiles and parses the example .sea. Passing grammar/IR checks does not yet prove TypeScript contracts are generated or semantically identical.
-- RuVector in pg0: pg0 includes pgvector, not RuVector. Extension availability is observed by bun run db:ruvector. This is not a verified RuVector integration.
-- Servo: research-only. No executable or Tauri WebView replacement is integrated; do not claim validation.
+- .github/workflows/ci.yml: TypeScript, Bun tests, React build, pg0 and Postgres.js persistence/rollback.
+- .github/workflows/domainforge-validation.yml: real DomainForge .sea validation + JSON IR parse.
+- .github/workflows/optional-validation.yml: Boa Rust execution, OpenTUI native PTY renderer, Tauri Linux installer/persistence.
 
-Check each workflow's actual status before saying it passed.
+## Standalone desktop acceptance
 
-## Manual exercises
+1. Stage pg0 v0.15.2 from official GitHub release, verify exact SHA-256.
+2. Run cargo check and cargo test for Rust/SQLx desktop.
+3. Build Linux .deb with pg0 bundled.
+4. Install .deb and check pg0 executable exists inside installed package.
+5. Run installed application executable with --desktop-smoke, using installed pg0, a disposable app-data directory and unique test instance. The test must write a note, stop database, restart, read note, and emit DESKTOP_PERSISTENCE_RESTART_OK.
+6. The smoke must succeed with no Bun API or separately launched PostgreSQL server.
 
-bun install
-bun run check
-pg0 start --name project-template --port 5432
-bun run db:migrate
-bun run db:smoke
-bun run db:ruvector
+No pass should be claimed until the corresponding GitHub Actions run is completed/success.
 
-OpenTUI: cd experiments/opentui && bun install && bun run typecheck; in a PTY run bun run probe, then bun run dev while the API runs. Verify input and terminal restoration on each target OS.
+## Still unvalidated
 
-Boa: cargo test --manifest-path experiments/boa/Cargo.toml and cargo run --manifest-path experiments/boa/Cargo.toml.
+- Clicking and entering data through the installed GUI after reboot and system upgrades.
+- Windows/macOS packaged app and device-level persistence.
+- Failure injection, multiuser permissions, secret protection, process management on crashes, data backup and restore.
+- RuVector native PG18 binary and index/query semantics inside pg0.
+- DomainForge generation of Rust/TypeScript/Valibot from canonical .sea; no drift test yet.
+- Servo browser-engine integration and cross-platform OpenTUI keyboard flows.
 
-Tauri: generate app icons; cargo check --manifest-path apps/web/src-tauri/Cargo.toml; bundle Linux .deb. A successful bundle is not a functional desktop release until local API lifecycle, origin/permissions, installation, launch, restart and recovery are verified.
+## Linux local reproduction
 
-RuVector: verify PostgreSQL 18 ABI compatibility, build/install extension into pg0 on a disposable database, CREATE EXTENSION, index/query roundtrip, recovery and safe uninstall. Do not report it as installed just because pgvector is available.
+Install Bun, Rust/Cargo and Tauri 2 dependencies.
 
-Servo: measured embed, web compatibility, memory/startup data, multi-OS distribution and failure recovery. Not implemented.
+1. bun install
+2. bun run --filter @template/web desktop:prepare
+3. bun run --filter @template/web desktop:icons
+4. bun run --filter @template/web desktop:build -- --bundles deb
+5. Install the generated .deb, inspect packaged binaries, run binary --desktop-smoke with pg0 executable path and a fresh temp directory.
 
-DomainForge: validate .sea; inspect resulting IR; to close the projection gate also regenerate TS schemas, policy and tests from the same IR and compare semantics.
-
-## Production gates
-
-No release until reproducible lockfiles, CI evidence, governed auth and authorization, platform lifecycle, secure permissions and trusted origins, signing, backup/rollback and recovery are proven. Experimental adapters not selected by a project do not block the default reference.
+Smoke explicitly drops only a UUID-named disposable PostgreSQL instance; never test using application user data.
