@@ -1,0 +1,79 @@
+name: Optional adapter validation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  boa:
+    name: Boa / Rust execution
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: experiments/boa
+      - name: Verify Rust-native ECMAScript execution
+        run: |
+          cargo test --manifest-path experiments/boa/Cargo.toml
+          cargo run --manifest-path experiments/boa/Cargo.toml
+
+  opentui:
+    name: OpenTUI / native renderer
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.0"
+      - name: Install isolated terminal UI
+        working-directory: experiments/opentui
+        run: bun install
+      - name: Type-check adapter
+        working-directory: experiments/opentui
+        run: bunx tsc --noEmit -p tsconfig.json
+      - name: Spawn native TUI renderer in a real pseudo-terminal
+        working-directory: experiments/opentui
+        run: |
+          set -o pipefail
+          export TERM=xterm-256color
+          timeout 30s script -qefc "bun src/probe.ts" /dev/null | tee /tmp/opentui-native.log
+          grep -q 'OPENTUI_RENDERER_OK' /tmp/opentui-native.log
+
+  tauri-linux:
+    name: Tauri 2 / Linux build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.0"
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/web/src-tauri
+      - name: Install Tauri Linux system libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+      - name: Install workspace dependencies
+        run: bun install
+      - name: Generate desktop icons
+        working-directory: apps/web
+        run: bun run desktop:icons
+      - name: Compile desktop Rust code
+        run: cargo check --manifest-path apps/web/src-tauri/Cargo.toml
+      - name: Build Linux .deb installer
+        working-directory: apps/web
+        run: bun run desktop:build -- --bundles deb
+      - name: Assert installable artifact exists
+        run: find apps/web/src-tauri/target/release/bundle/deb -type f -name '*.deb' -print -quit | grep -q '.deb'
