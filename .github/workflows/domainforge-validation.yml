@@ -22,14 +22,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-      - name: Build DomainForge's actual CLI at the pinned release commit
+      - name: Build DomainForge CLI at the pinned release commit
         run: |
-          cargo install --git https://github.com/GodSpeedAI/DomainForge.git --rev 6aef21d59e9793929844a5b0e2c889c523925aea --package domainforge-core --features cli --locked
+          cargo install --git https://github.com/GodSpeedAI/DomainForge.git --rev 6aef21d59e9793929844a5b0e2c889c523925aea --features cli --locked domainforge-core
           domainforge --version
-      - name: Validate the reference semantic source
+      - name: Validate reference semantic source
         run: domainforge validate --format human .sea/notes.sea
-      - name: Assert the compiler emits parsable IR
+      - name: Assert compiler emits JSON IR
         run: |
           domainforge parse --format json .sea/notes.sea > /tmp/domainforge-model.json
           python3 -m json.tool /tmp/domainforge-model.json > /dev/null
