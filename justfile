@@ -1,5 +1,4 @@
-# The same entry points work in WSL, Linux, and macOS.
-# On Windows, install Just and use the platform shell or run bun commands directly.
+# Reference commands; Just is an optional convenience layer.
 set dotenv-load := true
 
 default:
@@ -19,6 +18,9 @@ migrate:
 
 db-smoke:
     bun run db:smoke
+
+db-ruvector:
+    bun run db:ruvector
 
 dev:
     bun run dev

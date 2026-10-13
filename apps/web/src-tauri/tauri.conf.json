@@ -17,7 +17,9 @@
       "minWidth": 650,
       "minHeight": 480
     }],
-    "security": { "csp": null }
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://127.0.0.1:3000 ws://127.0.0.1:5173 http://127.0.0.1:5173"
+    }
   },
   "bundle": {
     "active": true,

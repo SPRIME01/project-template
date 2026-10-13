@@ -1,0 +1,46 @@
+name: Reference verification
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  types-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.0"
+      - name: Install workspace dependencies
+        run: bun install
+      - name: Static and unit checks
+        run: bun run check
+
+  postgres-smoke:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.0"
+      - name: Install workspace dependencies
+        run: bun install
+      - name: Install pg0 for CI
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/vectorize-io/pg0/main/install.sh -o /tmp/install-pg0.sh
+          bash /tmp/install-pg0.sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Start temporary PostgreSQL
+        run: pg0 start --name project-template --port 5432 --username postgres --password postgres --database postgres
+      - name: Migrate and prove database operations
+        run: |
+          bun run db:migrate
+          bun run db:smoke
+          bun run db:ruvector
