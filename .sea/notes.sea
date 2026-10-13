@@ -1,0 +1,16 @@
+@namespace "project_template.notes"
+@version "0.1.0"
+@owner "project-owner"
+@profile "default"
+
+// Illustrative canonical source; no code generation claim is made.
+// Reconcile this model with real application requirements before promotion.
+Entity "Actor"
+Entity "Note"
+
+Resource "NoteRecord" units
+
+Flow "NoteRecord" from "Actor" to "Note" quantity 1
+
+Policy positive_note_flow as:
+    forall f in flows: (f.quantity > 0)
