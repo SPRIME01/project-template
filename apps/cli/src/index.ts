@@ -1,4 +1,6 @@
 // A headless CLI projection of the API. The richer OpenTUI adapter remains optional.
+// Explicit ESM marker is required for top-level await when TypeScript detects no imports.
+export {};
 const [command = "help", ...args] = process.argv.slice(2);
 const base = process.env.API_URL ?? "http://127.0.0.1:3000";
 

@@ -24,7 +24,6 @@ export function createDb(url = process.env.DATABASE_URL): Kysely<Database> {
   return new Kysely<Database>({
     dialect: new PostgresJSDialect({
       postgres: client,
-      controlPostgres: postgres,
     }),
   });
 }
