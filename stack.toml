@@ -1,0 +1,45 @@
+# Human- and agent-readable toolchain manifest.
+# Technical architecture metadata; not a replacement for a DomainForge .sea model.
+[stack]
+name = "godspeed-project-template"
+version = "0.1.0"
+primary_language = "typescript"
+native_language = "rust"
+application_runtime = "bun"
+minimum_bun = "1.4.0"
+desktop_shell = "tauri2"
+
+[relational]
+query_builder = "kysely"
+dialect = "kysely-postgres-js"
+client = "postgres"
+database = "postgresql"
+local_distribution = "pg0"
+default_client = "postgres.js"
+bun_sql_is_default = false
+
+[contracts]
+validator = "valibot"
+interop = "standard-schema-v1"
+source_of_domain_meaning = "domainforge-sea"
+projection_generation_status = "unverified"
+
+[applications]
+api = "apps/api"
+web = "apps/web"
+desktop = "apps/web/src-tauri"
+cli = "apps/cli"
+
+[experimental]
+ruvector_pg0 = "pending-postgresql18-abi-validation"
+servo = "research-only"
+boa = "experiments/boa"
+opentui = "experiments/opentui"
+
+[verification]
+basic_command = "bun run check"
+database_command = "bun run db:smoke"
+ruvector_probe = "bun run db:ruvector"
+lockfile_committed = false
+github_ci_confirmed = false
+desktop_release_confirmed = false
