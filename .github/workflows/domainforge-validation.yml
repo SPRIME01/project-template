@@ -18,17 +18,19 @@ permissions:
 jobs:
   sea:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-      - name: Install published DomainForge CLI
-        run: npm install --global @godspeedai/domainforge
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build DomainForge's actual CLI at the pinned release commit
+        run: |
+          cargo install --git https://github.com/GodSpeedAI/DomainForge.git --rev 6aef21d59e9793929844a5b0e2c889c523925aea --package domainforge-core --features cli --locked
+          domainforge --version
       - name: Validate the reference semantic source
         run: domainforge validate --format human .sea/notes.sea
       - name: Assert the compiler emits parsable IR
         run: |
           domainforge parse --format json .sea/notes.sea > /tmp/domainforge-model.json
-          node -e "JSON.parse(require('fs').readFileSync('/tmp/domainforge-model.json','utf8')); console.log('DOMAINFORGE_IR_OK')"
+          python3 -m json.tool /tmp/domainforge-model.json > /dev/null
+          echo DOMAINFORGE_IR_OK
