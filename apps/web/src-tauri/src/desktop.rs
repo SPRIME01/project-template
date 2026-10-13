@@ -172,7 +172,9 @@ impl DesktopDatabase {
             if started_now { let _ = self.invoke_pg0(&["stop", "--name", &self.instance]); }
             return Err(format!("Desktop schema migration failed: {err}"));
         }
-        *self.started_here.lock().await = started_now;
+        // This app owns the dedicated instance even after reattaching following a crash.
+        // The Tauri single-instance guard prevents competing app owners.
+        *self.started_here.lock().await = true;
         *guard = Some(pool.clone());
         Ok(pool)
     }

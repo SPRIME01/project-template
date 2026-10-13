@@ -58,6 +58,27 @@ pub async fn desktop_smoke(binary: PathBuf, app_data: PathBuf) -> Result<(), Str
         return Err("Desktop note did not survive a full PostgreSQL restart".into());
     }
     second.shutdown().await?;
+    // Simulate a crash: the Rust owner vanishes without calling shutdown.
+    let crashed = DesktopDatabase::new(binary.clone(), app_data.clone(), id.clone());
+    if !crashed.list().await?.iter().any(|n| n.id == note.id) {
+        return Err("Crash-simulation database was unreadable".into());
+    }
+    drop(crashed);
+    // On relaunch, the dedicated pg0 process is already alive. The new owner
+    // must reattach and take responsibility for graceful shutdown.
+    let recovered = DesktopDatabase::new(binary.clone(), app_data.clone(), id.clone());
+    if !recovered.list().await?.iter().any(|n| n.id == note.id) {
+        return Err("Database could not be recovered after owner crash".into());
+    }
+    recovered.shutdown().await?;
+    let output = std::process::Command::new(&binary)
+        .args(["info", "--name", &id, "-o", "json"])
+        .output().map_err(|e| e.to_string())?;
+    let state: serde_json::Value = serde_json::from_slice(&output.stdout)
+        .map_err(|e| e.to_string())?;
+    if state["running"] == true {
+        return Err("Recovered desktop instance was not stopped on exit".into());
+    }
     // Test-only instance; remove metadata and files in this disposable location.
     let status = std::process::Command::new(&binary).args(["drop", "--name", &id, "--force"])
         .status().map_err(|e| e.to_string())?;

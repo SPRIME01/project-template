@@ -64,7 +64,7 @@ jobs:
       - name: Install Tauri Linux system libraries
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev patchelf xvfb xauth xdotool
       - name: Install workspace dependencies
         run: bun install
       - name: Prepare verified offline pg0 binary and app icons
@@ -97,3 +97,47 @@ jobs:
           "$APP_BIN" --desktop-smoke "$PG0_BIN" "$RUNNER_TEMP/desktop-state" | tee /tmp/desktop-smoke.txt
           grep -q DESKTOP_PERSISTENCE_RESTART_OK /tmp/desktop-smoke.txt
           echo "Passed: no Bun API or manually started PostgreSQL required"
+
+      - name: Launch installed Tauri GUI and confirm automatic PostgreSQL startup and shutdown
+        run: |
+          set -euo pipefail
+          APP_BIN="$(grep '/bin/godspeed-project-template$' /tmp/desktop-package-files.txt | head -n1)"
+          PG0_BIN="$(grep '/binaries/pg0$' /tmp/desktop-package-files.txt | head -n1)"
+          export HOME="$RUNNER_TEMP/isolated-gui-home"
+          export XDG_DATA_HOME="$HOME/.local/share"
+          export WEBKIT_DISABLE_COMPOSITING_MODE=1
+          export WEBKIT_DISABLE_DMABUF_RENDERER=1
+          mkdir -p "$HOME" "$XDG_DATA_HOME"
+          xvfb-run -a bash -s "$APP_BIN" "$PG0_BIN" <<'GUI_TEST'
+          set -euo pipefail
+          APP_BIN="$1"
+          PG0_BIN="$2"
+          "$APP_BIN" >/tmp/tauri-window.log 2>&1 &
+          child=$!
+          trap 'kill "$child" 2>/dev/null || true' EXIT
+          found=0
+          for attempt in $(seq 1 30); do
+            if xdotool search --name "GodSpeed Project Template" >/dev/null 2>&1; then found=1; break; fi
+            if ! kill -0 "$child" 2>/dev/null; then cat /tmp/tauri-window.log; exit 1; fi
+            sleep 1
+          done
+          test "$found" -eq 1 || { cat /tmp/tauri-window.log; exit 1; }
+          ready=0
+          for attempt in $(seq 1 30); do
+            info="$("$PG0_BIN" info --name godspeed-project-template-desktop -o json 2>/dev/null || true)"
+            if printf '%s' "$info" | python3 -c 'import json,sys; sys.exit(not json.load(sys.stdin).get("running",False))' 2>/dev/null; then ready=1; break; fi
+            sleep 1
+          done
+          test "$ready" -eq 1 || { cat /tmp/tauri-window.log; exit 1; }
+          echo TAURI_GUI_NATIVE_IPC_DATABASE_BOOT_OK
+          xdotool search --name "GodSpeed Project Template" | head -n1 | xargs -r xdotool windowclose
+          for attempt in $(seq 1 20); do
+            if ! kill -0 "$child" 2>/dev/null; then break; fi
+            sleep 1
+          done
+          if kill -0 "$child" 2>/dev/null; then echo "GUI did not exit"; exit 1; fi
+          wait "$child" || true
+          info="$("$PG0_BIN" info --name godspeed-project-template-desktop -o json)"
+          printf '%s' "$info" | python3 -c 'import json,sys; sys.exit(json.load(sys.stdin).get("running",False))'
+          echo TAURI_GUI_GRACEFUL_SHUTDOWN_OK
+          GUI_TEST
