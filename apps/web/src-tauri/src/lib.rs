@@ -53,7 +53,7 @@ pub async fn desktop_smoke(binary: PathBuf, app_data: PathBuf) -> Result<(), Str
         return Err("Insert was not readable".into());
     }
     first.shutdown().await?;
-    let second = DesktopDatabase::new(binary.clone(), app_data, id.clone());
+    let second = DesktopDatabase::new(binary.clone(), app_data.clone(), id.clone());
     if !second.list().await?.iter().any(|n| n.id == note.id) {
         return Err("Desktop note did not survive a full PostgreSQL restart".into());
     }
