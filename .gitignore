@@ -12,3 +12,4 @@ coverage/
 .idea/
 *.tsbuildinfo
 apps/web/src-tauri/gen/
+apps/web/src-tauri/binaries/

@@ -7,12 +7,14 @@
     "dev": "vite --host 127.0.0.1",
     "build": "tsc --noEmit -p tsconfig.json && vite build",
     "preview": "vite preview --host 127.0.0.1",
-    "desktop:dev": "tauri dev",
-    "desktop:build": "tauri build",
+    "desktop:prepare": "bun scripts/prepare-desktop.ts",
+    "desktop:dev": "bun run desktop:prepare && tauri dev",
+    "desktop:build": "bun run desktop:prepare && tauri build",
     "desktop:icons": "tauri icon public/app-icon.svg"
   },
   "dependencies": {
     "@template/contracts": "workspace:*",
+    "@tauri-apps/api": "^2.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

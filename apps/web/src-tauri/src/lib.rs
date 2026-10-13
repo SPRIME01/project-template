@@ -1,6 +1,67 @@
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
+pub mod desktop;
+
+use desktop::{CreateNote, DesktopDatabase, Note};
+use tauri::{Manager, RunEvent, State};
+use std::path::PathBuf;
+
+#[tauri::command]
+async fn list_notes(database: State<'_, DesktopDatabase>) -> Result<Vec<Note>, String> {
+    database.list().await
+}
+
+#[tauri::command]
+async fn create_note(input: CreateNote, database: State<'_, DesktopDatabase>) -> Result<Note, String> {
+    database.create(input).await
+}
+
 pub fn run() {
-    tauri::Builder::default()
-        .run(tauri::generate_context!())
-        .expect("error while running Tauri application");
+    let app = tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _, _| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.set_focus();
+            }
+        }))
+        .setup(|app| {
+            let resource = app.path().resource_dir()?;
+            let binary = resource.join("binaries").join(if cfg!(windows) { "pg0.exe" } else { "pg0" });
+            if !binary.is_file() {
+                return Err(format!("Missing bundled database runtime: {}", binary.display()).into());
+            }
+            let app_data = app.path().app_local_data_dir()?;
+            app.manage(DesktopDatabase::for_app(binary, app_data));
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![list_notes, create_note])
+        .build(tauri::generate_context!())
+        .expect("could not build Tauri app");
+
+    app.run(|app, event| {
+        if let RunEvent::Exit = event {
+            let database = app.state::<DesktopDatabase>();
+            if let Err(err) = tauri::async_runtime::block_on(database.shutdown()) {
+                eprintln!("Could not gracefully close desktop database: {err}");
+            }
+        }
+    });
+}
+
+pub async fn desktop_smoke(binary: PathBuf, app_data: PathBuf) -> Result<(), String> {
+    let id = format!("template-smoke-{}", uuid::Uuid::new_v4().simple());
+    let first = DesktopDatabase::new(binary.clone(), app_data.clone(), id.clone());
+    let note = first.create(CreateNote { title: "survives restart".into(), body: "native desktop".into() }).await?;
+    if !first.list().await?.iter().any(|n| n.id == note.id) {
+        return Err("Insert was not readable".into());
+    }
+    first.shutdown().await?;
+    let second = DesktopDatabase::new(binary.clone(), app_data, id.clone());
+    if !second.list().await?.iter().any(|n| n.id == note.id) {
+        return Err("Desktop note did not survive a full PostgreSQL restart".into());
+    }
+    second.shutdown().await?;
+    // Test-only instance; remove metadata and files in this disposable location.
+    let status = std::process::Command::new(&binary).args(["drop", "--name", &id, "--force"])
+        .status().map_err(|e| e.to_string())?;
+    if !status.success() { return Err("Could not clean up smoke-test cluster".into()); }
+    println!("DESKTOP_PERSISTENCE_RESTART_OK");
+    Ok(())
 }
