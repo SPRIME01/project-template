@@ -50,3 +50,10 @@ doctor:
     bun --version
     just --version
     pg0 --help
+
+# Isolated optional renderer probes; not part of default check/build.
+native-render-preact:
+    bash experiments/native-react-blitz/scripts/probe.sh preact
+
+native-render-astryx:
+    bash experiments/native-react-blitz/scripts/probe.sh astryx
