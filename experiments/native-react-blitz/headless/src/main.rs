@@ -40,13 +40,14 @@ fn run(mode: &str, path: PathBuf) -> Result<(), String> {
     if !errors.is_empty() { return Err(format!("{} Boa JS exceptions", errors.len())); }
     let expected = match mode {
        "preact" => "todos",
+       "react" => "Count: 0",
        "astryx" => "Count: 0",
        _ => return Err(format!("unknown mode {mode}"))
     };
     if !before.contains(expected) {
         return Err(format!("Missing {expected:?} from executed UI; received {before:?}"));
     }
-    if mode == "astryx" {
+    if mode == "astryx" || mode == "react" {
         let click = {
             let borrowed = doc.inner();
             let id = borrowed.query_selector("button").map_err(|e| format!("button query: {e:?}"))?
@@ -72,7 +73,7 @@ fn main() {
     let mode = args.next().unwrap_or_default();
     let path = args.next().unwrap_or_default();
     if mode.is_empty() || path.is_empty() {
-        eprintln!("Usage: native-react-blitz-smoke preact|astryx FILE.html");
+        eprintln!("Usage: native-react-blitz-smoke preact|react|astryx FILE.html");
         process::exit(2);
     }
     if let Err(err) = run(&mode, PathBuf::from(path)) {

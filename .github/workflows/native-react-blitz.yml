@@ -29,6 +29,7 @@ jobs:
       - run: bun run build
       - run: |
           test -s dist/index.html
+          test -s dist/basic.html
           find dist/assets -name '*.js' -size +0c | grep -q .
           ! grep -q '/src/main.tsx' dist/index.html
       - uses: actions/upload-artifact@v4
@@ -61,6 +62,12 @@ jobs:
         run: |
           set -o pipefail
           cargo run --manifest-path experiments/native-react-blitz/headless/Cargo.toml --release -- preact /tmp/blitz/examples/preact/index.html 2>&1 | tee /tmp/preact.log
+      - name: Execute minimal React DOM / Boa (discovery)
+        id: react
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          cargo run --manifest-path experiments/native-react-blitz/headless/Cargo.toml --release -- react experiments/native-react-blitz/dist/basic.html 2>&1 | tee /tmp/react.log
       - name: Execute React DOM / Astryx inside Boa / Blitz (discovery)
         id: astryx
         continue-on-error: true
@@ -71,7 +78,8 @@ jobs:
         if: always()
         run: |
           echo '## Actual Boa/Blitz execution' >> "$GITHUB_STEP_SUMMARY"
-          echo 'React/Astryx result: experimental, inspect the **Execute React DOM / Astryx** step.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'React DOM and React/Astryx: inspect the two **discovery** step outcomes; neither is a hard gate.' >> "$GITHUB_STEP_SUMMARY"
+          if [ -f /tmp/react.log ]; then tail -n 50 /tmp/react.log >> "$GITHUB_STEP_SUMMARY"; fi
           if [ -f /tmp/astryx.log ]; then tail -n 70 /tmp/astryx.log >> "$GITHUB_STEP_SUMMARY"; fi
       - uses: actions/upload-artifact@v4
         if: always()
@@ -79,5 +87,6 @@ jobs:
           name: native-react-boa-diagnostics
           path: |
             /tmp/preact.log
+            /tmp/react.log
             /tmp/astryx.log
           if-no-files-found: ignore

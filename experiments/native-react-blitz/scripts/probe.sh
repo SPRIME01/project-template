@@ -15,11 +15,15 @@ fi
 test "$(git -C "$checkout" rev-parse HEAD)" = "$pinned"
 case "$mode" in
   preact|headless-preact) html="$checkout/examples/preact/index.html" ;;
+  react|headless-react)
+    command -v bun >/dev/null || { echo "Bun required" >&2; exit 2; }
+    (cd "$here" && bun install && bun run typecheck && bun run build)
+    html="$here/dist/basic.html" ;;
   astryx|headless-astryx)
     command -v bun >/dev/null || { echo "Bun required" >&2; exit 2; }
     (cd "$here" && bun install && bun run typecheck && bun run build)
     html="$here/dist/index.html" ;;
-  *) echo "Usage: $0 preact|astryx|headless-preact|headless-astryx" >&2; exit 2 ;;
+  *) echo "Usage: $0 preact|react|astryx|headless-preact|headless-react|headless-astryx" >&2; exit 2 ;;
 esac
 echo "Blitz revision: $pinned"
 echo "Probe HTML: $html"

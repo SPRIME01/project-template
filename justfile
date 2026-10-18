@@ -64,3 +64,6 @@ native-render-headless-preact:
 
 native-render-headless-astryx:
     bash experiments/native-react-blitz/scripts/probe.sh headless-astryx
+
+native-render-headless-react:
+    bash experiments/native-react-blitz/scripts/probe.sh headless-react
