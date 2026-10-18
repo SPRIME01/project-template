@@ -73,13 +73,29 @@ fn run(mode: &str, path: PathBuf) -> Result<(), String> {
         };
         {
             let mut borrowed = doc.inner_mut();
-            borrowed.set_focus_to(input_id);
+            let focused = borrowed.set_focus_to(input_id);
+            println!("NATIVE_PROBE_FOCUS_CHANGED={focused}");
+        }
+        {
+            let borrowed = doc.inner();
+            let native_editor = borrowed.get_node(input_id).and_then(|node| node.element_data())
+                .and_then(|el| el.text_input_data())
+                .map(|data| data.editor.raw_text().to_string());
+            println!("NATIVE_PROBE_NATIVE_EDITOR_BEFORE={native_editor:?}");
+            println!("NATIVE_PROBE_FOCUSED_NODE={:?}", borrowed.get_focussed_node_id());
         }
         // Simulate a real input-method commit through native Blitz event handling;
         // do not directly call the React setState callback or inject a fake DOM.
         doc.handle_ui_event(UiEvent::Ime(BlitzImeEvent::Commit("native hello".into())));
         pump(&mut doc);
         let input_after = text(&doc);
+        {
+            let borrowed = doc.inner();
+            let editor = borrowed.get_node(input_id).and_then(|node| node.element_data())
+                .and_then(|el| el.text_input_data())
+                .map(|data| data.editor.raw_text().to_string());
+            println!("NATIVE_PROBE_NATIVE_EDITOR_AFTER={editor:?}");
+        }
         println!("NATIVE_PROBE_AFTER_NATIVE_IME={input_after:?}");
         let errors = doc.take_js_errors();
         for error in &errors { eprintln!("NATIVE_PROBE_JS_ERROR_INPUT={error}"); }
