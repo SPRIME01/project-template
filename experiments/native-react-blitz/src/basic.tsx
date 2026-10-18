@@ -10,7 +10,7 @@ function ReactCompatibilityProbe() {
       <p>Count: {count}</p>
       <button type="button" onClick={() => setCount((prev) => prev + 1)}>Increment</button>
       <label htmlFor="typing">Text</label>
-      <input id="typing" value={value} onChange={(event) => setValue(event.target.value)} />
+      <input id="typing" type="text" value={value} onChange={(event) => setValue(event.target.value)} />
       <p>Echo: {value}</p>
     </main>
   );
