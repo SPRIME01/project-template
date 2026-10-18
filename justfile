@@ -57,3 +57,19 @@ native-render-preact:
 
 native-render-astryx:
     bash experiments/native-react-blitz/scripts/probe.sh astryx
+
+# Actual native Boa + Blitz execution tests.
+native-render-headless-preact:
+    bash experiments/native-react-blitz/scripts/probe.sh headless-preact
+
+native-render-headless-astryx:
+    bash experiments/native-react-blitz/scripts/probe.sh headless-astryx
+
+native-render-headless-react:
+    bash experiments/native-react-blitz/scripts/probe.sh headless-react
+
+native-render-headless-react-input:
+    bash experiments/native-react-blitz/scripts/probe.sh headless-react-input
+
+native-render-headless-astryx-input:
+    bash experiments/native-react-blitz/scripts/probe.sh headless-astryx-input

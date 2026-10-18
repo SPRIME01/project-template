@@ -1,0 +1,153 @@
+name: Browserless React compatibility
+
+on:
+  pull_request:
+    paths:
+      - "experiments/native-react-blitz/**"
+      - ".github/workflows/native-react-blitz.yml"
+      - "justfile"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  astryx-bundle:
+    name: Bundle React 19 + Astryx
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: experiments/native-react-blitz
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.0"
+      - run: bun install
+      - run: bun run typecheck
+      - run: bun run build
+      - run: |
+          test -s dist/index.html
+          test -s dist/basic.html
+          find dist/assets -name '*.js' -size +0c | grep -q .
+          ! grep -q '/src/main.tsx' dist/index.html
+      - uses: actions/upload-artifact@v4
+        with:
+          name: astryx-native-probe
+          path: experiments/native-react-blitz/dist/
+          if-no-files-found: error
+
+  boa-headless:
+    name: Execute native Boa/Blitz (Preact, React, Astryx, IME)
+    needs: astryx-bundle
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: experiments/native-react-blitz/headless
+      - uses: actions/download-artifact@v4
+        with:
+          name: astryx-native-probe
+          path: experiments/native-react-blitz/dist/
+      - run: |
+          git clone --filter=blob:none https://github.com/DioxusLabs/blitz.git /tmp/blitz
+          git -C /tmp/blitz checkout fb8d6c15e9ce062b3b41e71cd48988f0093506cc
+      - name: Compile headless Boa / Blitz test
+        run: cargo build --manifest-path experiments/native-react-blitz/headless/Cargo.toml --release
+      - name: Prove upstream Preact works inside Boa / Blitz
+        run: |
+          set -o pipefail
+          cargo run --manifest-path experiments/native-react-blitz/headless/Cargo.toml --release -- preact /tmp/blitz/examples/preact/index.html 2>&1 | tee /tmp/preact.log
+      - name: Execute minimal React DOM / Boa and assert native click
+        id: react
+        run: |
+          set -o pipefail
+          cargo run --manifest-path experiments/native-react-blitz/headless/Cargo.toml --release -- react experiments/native-react-blitz/dist/basic.html 2>&1 | tee /tmp/react.log
+      - name: Execute React DOM / Astryx and assert native click
+        id: astryx
+        run: |
+          set -o pipefail
+          cargo run --manifest-path experiments/native-react-blitz/headless/Cargo.toml --release -- astryx experiments/native-react-blitz/dist/index.html 2>&1 | tee /tmp/astryx.log
+      - name: React DOM controlled native IME input
+        id: react_input
+        run: |
+          set -o pipefail
+          cargo run --manifest-path experiments/native-react-blitz/headless/Cargo.toml --release -- react-input experiments/native-react-blitz/dist/basic.html 2>&1 | tee /tmp/react-input.log
+      - name: Astryx controlled native IME input
+        id: astryx_input
+        run: |
+          set -o pipefail
+          cargo run --manifest-path experiments/native-react-blitz/headless/Cargo.toml --release -- astryx-input experiments/native-react-blitz/dist/index.html 2>&1 | tee /tmp/astryx-input.log
+      - name: Paint Astryx CSS and native DOM to PNG using Vello CPU
+        run: |
+          set -o pipefail
+          cargo run --manifest-path experiments/native-react-blitz/headless/Cargo.toml --release -- astryx experiments/native-react-blitz/dist/index.html /tmp/astryx-boa-cpu.png 2>&1 | tee /tmp/astryx-cpu.log
+          test -s /tmp/astryx-boa-cpu.png
+          file /tmp/astryx-boa-cpu.png
+      - name: Summarize native execution receipts
+        if: always()
+        run: |
+          echo '## Actual Boa/Blitz execution' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Preact, React DOM, Astryx and native IME text editing are mandatory headless gates. CSS painting and native Winit packaging remain separate.' >> "$GITHUB_STEP_SUMMARY"
+          if [ -f /tmp/react-input.log ]; then tail -n 50 /tmp/react-input.log >> "$GITHUB_STEP_SUMMARY"; fi
+          if [ -f /tmp/astryx-input.log ]; then tail -n 50 /tmp/astryx-input.log >> "$GITHUB_STEP_SUMMARY"; fi
+          if [ -f /tmp/react.log ]; then tail -n 50 /tmp/react.log >> "$GITHUB_STEP_SUMMARY"; fi
+          if [ -f /tmp/astryx.log ]; then tail -n 70 /tmp/astryx.log >> "$GITHUB_STEP_SUMMARY"; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-react-boa-diagnostics
+          path: |
+            /tmp/preact.log
+            /tmp/react.log
+            /tmp/astryx.log
+            /tmp/react-input.log
+            /tmp/astryx-input.log
+            /tmp/astryx-cpu.log
+            /tmp/astryx-boa-cpu.png
+          if-no-files-found: ignore
+
+  native-gui-screenshot:
+    name: Blitz native window + Astryx screenshot (experimental)
+    needs: astryx-bundle
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/download-artifact@v4
+        with:
+          name: astryx-native-probe
+          path: experiments/native-react-blitz/dist/
+      - name: Linux native window prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb xauth xdotool openbox imagemagick libxkbcommon-dev libxkbcommon-x11-dev libfontconfig1-dev libasound2-dev libudev-dev libssl-dev libgl1-mesa-dri
+      - name: Checkout pinned Blitz
+        run: |
+          git clone --filter=blob:none https://github.com/DioxusLabs/blitz.git /tmp/blitz
+          git -C /tmp/blitz checkout fb8d6c15e9ce062b3b41e71cd48988f0093506cc
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: /tmp/blitz
+      - name: Compile actual Blitz native GUI
+        working-directory: /tmp/blitz
+        run: cargo build --locked --example preact_script
+      - name: Launch Astryx GUI under Xvfb and capture rendering
+        working-directory: /tmp/blitz
+        run: |
+          bash "$GITHUB_WORKSPACE/experiments/native-react-blitz/scripts/gui-smoke.sh" "$GITHUB_WORKSPACE/experiments/native-react-blitz/dist/index.html" /tmp/blitz-astryx-gui.log /tmp/blitz-astryx-gui.png
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: blitz-astryx-gui-evidence
+          path: |
+            /tmp/blitz-astryx-gui.png
+            /tmp/blitz-astryx-gui.log
+            /tmp/blitz-openbox.log
+          if-no-files-found: ignore
