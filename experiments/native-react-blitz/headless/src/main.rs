@@ -1,0 +1,82 @@
+//! Runtime smoke test: genuine React/Preact JS execution in Boa/Blitz.
+//! Does not validate graphics, accessibility, CSS, or packaging.
+use blitz_dom::{Document, DocumentConfig};
+use blitz_traits::events::DomEvent;
+use blitz_vibey_script::ScriptDocument;
+use keyboard_types::Modifiers;
+use std::{env,fs,path::PathBuf,process};
+use url::Url;
+
+fn pump(doc: &mut ScriptDocument) {
+    for _ in 0..30 {
+        if let Some(next) = doc.next_timer_deadline() {
+            doc.advance_clock_to(next);
+        }
+        doc.poll(None);
+    }
+}
+fn text(doc: &ScriptDocument) -> String {
+    let borrowed = doc.inner();
+    borrowed.get_element_by_id("app")
+        .and_then(|id| borrowed.get_node(id))
+        .map(|node| node.text_content())
+        .unwrap_or_default()
+}
+fn run(mode: &str, path: PathBuf) -> Result<(), String> {
+    let path = path.canonicalize().map_err(|e| format!("No HTML {}: {e}", path.display()))?;
+    let html = fs::read_to_string(&path).map_err(|e| e.to_string())?;
+    let url = Url::from_file_path(&path).map_err(|_| "Invalid local file path")?;
+    let mut doc = ScriptDocument::from_html(
+        &html,
+        DocumentConfig { base_url: Some(url.to_string()), ..Default::default() },
+    ).without_timer_thread().with_virtual_time();
+    doc.execute_scripts();
+    pump(&mut doc);
+    let before = text(&doc);
+    println!("NATIVE_PROBE_MODE={mode}");
+    println!("NATIVE_PROBE_BEFORE={before:?}");
+    let errors = doc.take_js_errors();
+    for error in &errors { eprintln!("NATIVE_PROBE_JS_ERROR={error}"); }
+    if !errors.is_empty() { return Err(format!("{} Boa JS exceptions", errors.len())); }
+    let expected = match mode {
+       "preact" => "todos",
+       "astryx" => "Count: 0",
+       _ => return Err(format!("unknown mode {mode}"))
+    };
+    if !before.contains(expected) {
+        return Err(format!("Missing {expected:?} from executed UI; received {before:?}"));
+    }
+    if mode == "astryx" {
+        let click = {
+            let borrowed = doc.inner();
+            let id = borrowed.query_selector("button").map_err(|e| format!("button query: {e:?}"))?
+                .ok_or("Missing Astryx button")?;
+            let button = borrowed.get_node(id).ok_or("Button node missing")?;
+            DomEvent::new(id, button.synthetic_click_event(Modifiers::empty()))
+        };
+        doc.dispatch_dom_event(click);
+        pump(&mut doc);
+        let after = text(&doc);
+        println!("NATIVE_PROBE_AFTER_CLICK={after:?}");
+        let errors = doc.take_js_errors();
+        for error in &errors { eprintln!("NATIVE_PROBE_JS_ERROR_AFTER={error}"); }
+        if !errors.is_empty() || !after.contains("Count: 1") {
+            return Err("Native event failed to update Astryx React state".into());
+        }
+    }
+    println!("NATIVE_REACT_{mode}_PASS");
+    Ok(())
+}
+fn main() {
+    let mut args = env::args().skip(1);
+    let mode = args.next().unwrap_or_default();
+    let path = args.next().unwrap_or_default();
+    if mode.is_empty() || path.is_empty() {
+        eprintln!("Usage: native-react-blitz-smoke preact|astryx FILE.html");
+        process::exit(2);
+    }
+    if let Err(err) = run(&mode, PathBuf::from(path)) {
+        eprintln!("NATIVE_REACT_{mode}_FAIL: {err}");
+        process::exit(1);
+    }
+}

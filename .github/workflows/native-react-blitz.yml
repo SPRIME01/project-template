@@ -1,0 +1,83 @@
+name: Browserless React compatibility
+
+on:
+  pull_request:
+    paths:
+      - "experiments/native-react-blitz/**"
+      - ".github/workflows/native-react-blitz.yml"
+      - "justfile"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  astryx-bundle:
+    name: Bundle React 19 + Astryx
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: experiments/native-react-blitz
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.0"
+      - run: bun install
+      - run: bun run typecheck
+      - run: bun run build
+      - run: |
+          test -s dist/index.html
+          find dist/assets -name '*.js' -size +0c | grep -q .
+          ! grep -q '/src/main.tsx' dist/index.html
+      - uses: actions/upload-artifact@v4
+        with:
+          name: astryx-native-probe
+          path: experiments/native-react-blitz/dist/
+          if-no-files-found: error
+
+  boa-headless:
+    name: Execute actual Boa/Blitz (Preact baseline + Astryx discovery)
+    needs: astryx-bundle
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: experiments/native-react-blitz/headless
+      - uses: actions/download-artifact@v4
+        with:
+          name: astryx-native-probe
+          path: experiments/native-react-blitz/dist/
+      - run: |
+          git clone --filter=blob:none https://github.com/DioxusLabs/blitz.git /tmp/blitz
+          git -C /tmp/blitz checkout fb8d6c15e9ce062b3b41e71cd48988f0093506cc
+      - name: Compile headless Boa / Blitz test
+        run: cargo build --manifest-path experiments/native-react-blitz/headless/Cargo.toml --release
+      - name: Prove upstream Preact works inside Boa / Blitz
+        run: |
+          set -o pipefail
+          cargo run --manifest-path experiments/native-react-blitz/headless/Cargo.toml --release -- preact /tmp/blitz/examples/preact/index.html 2>&1 | tee /tmp/preact.log
+      - name: Execute React DOM / Astryx inside Boa / Blitz (discovery)
+        id: astryx
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          cargo run --manifest-path experiments/native-react-blitz/headless/Cargo.toml --release -- astryx experiments/native-react-blitz/dist/index.html 2>&1 | tee /tmp/astryx.log
+      - name: Record exploratory failure as a failure, not a pass
+        if: always()
+        run: |
+          echo '## Actual Boa/Blitz execution' >> "$GITHUB_STEP_SUMMARY"
+          echo 'React/Astryx result: experimental, inspect the **Execute React DOM / Astryx** step.' >> "$GITHUB_STEP_SUMMARY"
+          if [ -f /tmp/astryx.log ]; then tail -n 70 /tmp/astryx.log >> "$GITHUB_STEP_SUMMARY"; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-react-boa-diagnostics
+          path: |
+            /tmp/preact.log
+            /tmp/astryx.log
+          if-no-files-found: ignore

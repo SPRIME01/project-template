@@ -19,6 +19,14 @@ From project-template root:
 
 Requires Git, Cargo/Rust >= 1.91 and Blitz's OS GPU/windowing prerequisites; Astryx additionally needs Bun >= 1.4. The script downloads and executes upstream code. Inspect it first. Upstream checkout is pinned under ignored `.cache/`. No platform smoke has yet been executed for this experiment.
 
+## Executable native JS/DOM evidence
+
+[CI](../../.github/workflows/native-react-blitz.yml) now independently bundles React 19/Astryx, then invokes Blitz's actual Boa-based ScriptDocument using a Rust headless harness. It checks JS exceptions, verifies that the application populated the DOM, and dispatches a real native click into React. This is not a screenshot/paint/layout or accessibility test.
+
+The upstream Preact TodoMVC is the hard-gated control. React/Astryx is deliberately **non-blocking and recorded as an explicit exploratory failure** until it works. Green CI by itself is therefore not evidence that React/Astryx works in Boa.
+
+Locally, run `just native-render-headless-preact` and `just native-render-headless-astryx`. Exact dependency commits and JS errors appear in output. No renderer is promoted to production by this work.
+
 ## Port architecture (after profiling both strategies)
 
 `React + Astryx -> react-dom or react-reconciler -> Boa JS host -> Blitz DOM -> Stylo CSS -> Taffy layout -> Vello paint -> Winit window`.
