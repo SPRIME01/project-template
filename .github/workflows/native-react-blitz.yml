@@ -84,6 +84,12 @@ jobs:
         run: |
           set -o pipefail
           cargo run --manifest-path experiments/native-react-blitz/headless/Cargo.toml --release -- astryx-input experiments/native-react-blitz/dist/index.html 2>&1 | tee /tmp/astryx-input.log
+      - name: Paint Astryx CSS and native DOM to PNG using Vello CPU
+        run: |
+          set -o pipefail
+          cargo run --manifest-path experiments/native-react-blitz/headless/Cargo.toml --release -- astryx experiments/native-react-blitz/dist/index.html /tmp/astryx-boa-cpu.png 2>&1 | tee /tmp/astryx-cpu.log
+          test -s /tmp/astryx-boa-cpu.png
+          file /tmp/astryx-boa-cpu.png
       - name: Record exploratory failure as a failure, not a pass
         if: always()
         run: |
@@ -103,6 +109,8 @@ jobs:
             /tmp/astryx.log
             /tmp/react-input.log
             /tmp/astryx-input.log
+            /tmp/astryx-cpu.log
+            /tmp/astryx-boa-cpu.png
           if-no-files-found: ignore
 
   native-gui-screenshot:

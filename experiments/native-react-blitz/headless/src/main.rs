@@ -6,6 +6,12 @@ use blitz_vibey_script::ScriptDocument;
 use keyboard_types::Modifiers;
 use std::{env,fs,path::PathBuf,process};
 use url::Url;
+use anyrender::{PaintScene as _, render_to_buffer};
+use anyrender_vello_cpu::VelloCpuImageRenderer;
+use blitz_paint::paint_scene;
+use png;
+use std::fs::File;
+use std::io::BufWriter;
 
 fn pump(doc: &mut ScriptDocument) {
     for _ in 0..30 {
@@ -22,7 +28,41 @@ fn text(doc: &ScriptDocument) -> String {
         .map(|node| node.text_content())
         .unwrap_or_default()
 }
-fn run(mode: &str, path: PathBuf) -> Result<(), String> {
+
+fn paint_png(doc: &mut ScriptDocument, path: &str) -> Result<(), String> {
+    // No GPU surface: use Blitz's actual CSS/layout + Vello CPU paint pipeline.
+    let width = 980u32;
+    let height = 660u32;
+    doc.inner_mut().resolve(0.0);
+    let pixels = render_to_buffer::<VelloCpuImageRenderer, _>(
+        |scene| {
+            use anyrender::peniko::{Fill, Color};
+            use anyrender::kurbo::Rect;
+            scene.fill(
+                Fill::NonZero,
+                Default::default(),
+                Color::WHITE,
+                Default::default(),
+                &Rect::new(0.0, 0.0, width as f64, height as f64),
+            );
+            let mut inner = doc.inner_mut();
+            paint_scene(scene, &mut inner, 1.0, width, height, 0, 0);
+        },
+        width,
+        height,
+    );
+    let file = File::create(path).map_err(|e| e.to_string())?;
+    let mut encoder = png::Encoder::new(BufWriter::new(file), width, height);
+    encoder.set_color(png::ColorType::Rgba);
+    encoder.set_depth(png::BitDepth::Eight);
+    let mut writer = encoder.write_header().map_err(|e| e.to_string())?;
+    writer.write_image_data(&pixels).map_err(|e| e.to_string())?;
+    println!("NATIVE_CPU_PNG_PATH={path}");
+    println!("NATIVE_CPU_PNG_BYTES={}", pixels.len());
+    Ok(())
+}
+
+fn run(mode: &str, path: PathBuf, png_path: Option<&str>) -> Result<(), String> {
     let path = path.canonicalize().map_err(|e| format!("No HTML {}: {e}", path.display()))?;
     let html = fs::read_to_string(&path).map_err(|e| e.to_string())?;
     let url = Url::from_file_path(&path).map_err(|_| "Invalid local file path")?;
@@ -106,6 +146,7 @@ fn run(mode: &str, path: PathBuf) -> Result<(), String> {
             return Err("Native IME input did not update React's controlled input".into());
         }
     }
+    if let Some(path) = png_path { paint_png(&mut doc,path)?; }
     println!("NATIVE_REACT_{mode}_PASS");
     Ok(())
 }
@@ -117,7 +158,8 @@ fn main() {
         eprintln!("Usage: native-react-blitz-smoke preact|react|astryx|react-input|astryx-input FILE.html");
         process::exit(2);
     }
-    if let Err(err) = run(&mode, PathBuf::from(path)) {
+    let png_path = args.next();
+    if let Err(err) = run(&mode, PathBuf::from(path), png_path.as_deref()) {
         eprintln!("NATIVE_REACT_{mode}_FAIL: {err}");
         process::exit(1);
     }

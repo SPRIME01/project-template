@@ -9,6 +9,10 @@ blitz-dom = { git = "https://github.com/DioxusLabs/blitz", rev = "fb8d6c15e9ce06
 blitz-traits = { git = "https://github.com/DioxusLabs/blitz", rev = "fb8d6c15e9ce062b3b41e71cd48988f0093506cc" }
 blitz-vibey-script = { git = "https://github.com/DioxusLabs/blitz", rev = "fb8d6c15e9ce062b3b41e71cd48988f0093506cc" }
 keyboard-types = "0.8"
+blitz-paint = { git = "https://github.com/DioxusLabs/blitz", rev = "fb8d6c15e9ce062b3b41e71cd48988f0093506cc" }
+anyrender = "0.14.0"
+anyrender_vello_cpu = "0.18.0"
+png = "0.18"
 url = "2.5"
 
 [workspace]
