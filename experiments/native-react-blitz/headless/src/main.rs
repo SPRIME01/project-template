@@ -66,6 +66,9 @@ fn run(mode: &str, path: PathBuf) -> Result<(), String> {
         }
     }
     if mode == "astryx-input" || mode == "react-input" {
+        // Native input widgets are created during Blitz layout construction.
+        // DOM-only script execution cannot exercise a text editor without a resolve.
+        doc.inner_mut().resolve(0.0);
         let input_id = {
             let borrowed = doc.inner();
             borrowed.query_selector("input").map_err(|e| format!("input selector: {e:?}"))?
