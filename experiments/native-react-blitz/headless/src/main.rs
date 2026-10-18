@@ -7,6 +7,8 @@ use keyboard_types::Modifiers;
 use std::{env,fs,path::PathBuf,process};
 use url::Url;
 use anyrender::{PaintScene as _, render_to_buffer};
+use peniko::{Fill,kurbo::Rect};
+use blitz_dom::util::Color;
 use anyrender_vello_cpu::VelloCpuImageRenderer;
 use blitz_paint::paint_scene;
 use png;
@@ -36,8 +38,6 @@ fn paint_png(doc: &mut ScriptDocument, path: &str) -> Result<(), String> {
     doc.inner_mut().resolve(0.0);
     let pixels = render_to_buffer::<VelloCpuImageRenderer, _>(
         |scene| {
-            use anyrender::peniko::{Fill, Color};
-            use anyrender::kurbo::Rect;
             scene.fill(
                 Fill::NonZero,
                 Default::default(),

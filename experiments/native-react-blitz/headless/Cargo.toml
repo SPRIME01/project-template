@@ -13,6 +13,7 @@ blitz-paint = { git = "https://github.com/DioxusLabs/blitz", rev = "fb8d6c15e9ce
 anyrender = "0.14.0"
 anyrender_vello_cpu = "0.18.0"
 png = "0.18"
+peniko = "0.6.0"
 url = "2.5"
 
 [workspace]
