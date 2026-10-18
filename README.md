@@ -68,6 +68,10 @@ Servo browser embedding, real Windows/macOS Tauri packaging and lifecycle tests,
 
 This is a **local-first development template**. The desktop employs loopback PostgreSQL and a random on-disk database credential, but provisioning currently passes that secret as a process argument, and Windows ACLs, credential hardening, crash recovery, backups, upgrades and concurrency still require audits. The GUI is not a production-certified app. Browser/API authentication is not implemented. Never expose its API to public interfaces.
 
+## Experimental browserless React renderer
+
+An opt-in [Boa + Blitz + React 19/Astryx probe](experiments/native-react-blitz/README.md) is available with `just native-render-preact` and `just native-render-astryx`. This tests a possible browserless desktop renderer without altering the verified Tauri/WebView desktop route. **React DOM/Astryx compatibility with Boa/Blitz is not yet established.**
+
 ## Reuse this repository
 
 Enable **Template repository** in GitHub Settings → General to get the *Use this template* action. Rename `@template/*` package names, app/instance identifiers and Tauri bundle identifier, then replace Notes with your own domain. On first installation, commit the generated `bun.lock` and Cargo lockfile after validation; run the actual target platform matrix before shipping.

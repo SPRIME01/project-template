@@ -1,0 +1,22 @@
+{
+  "name": "@template/native-react-blitz-probe",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@astryxdesign/core": "0.6.3",
+    "@astryxdesign/theme-neutral": "0.6.3",
+    "@stylexjs/stylex": "0.19.1",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.2.2",
+    "typescript": "7.0.2",
+    "vite": "7.3.1"
+  }
+}
