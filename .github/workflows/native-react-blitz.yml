@@ -39,7 +39,7 @@ jobs:
           if-no-files-found: error
 
   boa-headless:
-    name: Execute actual Boa/Blitz (Preact baseline + Astryx discovery)
+    name: Execute native Boa/Blitz (Preact, React, Astryx, IME)
     needs: astryx-bundle
     runs-on: ubuntu-24.04
     timeout-minutes: 55
@@ -72,15 +72,13 @@ jobs:
         run: |
           set -o pipefail
           cargo run --manifest-path experiments/native-react-blitz/headless/Cargo.toml --release -- astryx experiments/native-react-blitz/dist/index.html 2>&1 | tee /tmp/astryx.log
-      - name: Test controlled React text input from native IME (discovery)
+      - name: React DOM controlled native IME input
         id: react_input
-        continue-on-error: true
         run: |
           set -o pipefail
           cargo run --manifest-path experiments/native-react-blitz/headless/Cargo.toml --release -- react-input experiments/native-react-blitz/dist/basic.html 2>&1 | tee /tmp/react-input.log
-      - name: Test Astryx TextInput from native IME (discovery)
+      - name: Astryx controlled native IME input
         id: astryx_input
-        continue-on-error: true
         run: |
           set -o pipefail
           cargo run --manifest-path experiments/native-react-blitz/headless/Cargo.toml --release -- astryx-input experiments/native-react-blitz/dist/index.html 2>&1 | tee /tmp/astryx-input.log
@@ -90,11 +88,11 @@ jobs:
           cargo run --manifest-path experiments/native-react-blitz/headless/Cargo.toml --release -- astryx experiments/native-react-blitz/dist/index.html /tmp/astryx-boa-cpu.png 2>&1 | tee /tmp/astryx-cpu.log
           test -s /tmp/astryx-boa-cpu.png
           file /tmp/astryx-boa-cpu.png
-      - name: Record exploratory failure as a failure, not a pass
+      - name: Summarize native execution receipts
         if: always()
         run: |
           echo '## Actual Boa/Blitz execution' >> "$GITHUB_STEP_SUMMARY"
-          echo 'React and Astryx mounts/clicks are hard gates; **native IME input** is exploratory.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Preact, React DOM, Astryx and native IME text editing are mandatory headless gates. CSS painting and native Winit packaging remain separate.' >> "$GITHUB_STEP_SUMMARY"
           if [ -f /tmp/react-input.log ]; then tail -n 50 /tmp/react-input.log >> "$GITHUB_STEP_SUMMARY"; fi
           if [ -f /tmp/astryx-input.log ]; then tail -n 50 /tmp/astryx-input.log >> "$GITHUB_STEP_SUMMARY"; fi
           if [ -f /tmp/react.log ]; then tail -n 50 /tmp/react.log >> "$GITHUB_STEP_SUMMARY"; fi

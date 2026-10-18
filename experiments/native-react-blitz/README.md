@@ -1,11 +1,11 @@
 # Native React: Boa + Blitz + Astryx
 
-**Status: experimental; no React DOM/Astryx pass demonstrated.** This adds opt-in probes to project-template without changing its default Tauri/Wry desktop renderer, pg0 packaging or API.
+**Status: experimental native UI backend; basic React/Astryx execution and native interaction now verified in Linux headless CI.** The opt-in experiments do not change the default Tauri/Wry desktop renderer, pg0 packaging or API.
 
 ## Why these projects
 
 - [jhead/bevy-react](https://github.com/jhead/bevy-react) (MIT) demonstrates React 19 in Boa, with React scheduling, a custom reconciler, native events, batched mutation messages and typed native calls. Bevy UI/ECS is only one host implementation.
-- [DioxusLabs/blitz](https://github.com/DioxusLabs/blitz) already has `blitz-vibey-script` (Boa plus a DOM/CSS/native event shell). Its `examples/preact_script.rs` and TodoMVC example demonstrate Preact. Its `examples/preact/react_dom_apis.md` inventories React DOM requirements, but **does not prove React DOM compatibility**.
+- [DioxusLabs/blitz](https://github.com/DioxusLabs/blitz) already has `blitz-vibey-script` (Boa plus a DOM/CSS/native event shell). Its `examples/preact_script.rs` and TodoMVC example demonstrate Preact. Its `examples/preact/react_dom_apis.md` inventories React DOM requirements. Our pinned Linux headless smoke now independently proves basic React 19 and Astryx DOM mount, button click and controlled text input in Boa/Blitz. It **does not prove complete React DOM or Astryx compatibility**.
 - [Astryx](https://github.com/facebook/astryx) requires React 19 and react-dom, supplies compiled CSS and theme variables, and may depend on DOM measurement, portals, focus and event behavior.
 
 Therefore: try extending Blitz's existing DOM bindings to support standard React DOM *before* porting a custom reconciler. If that proves more expensive, reuse the reconciler/protocol/Boa scheduling work from bevy-react while swapping its Bevy host for a Blitz document host. In either route, the requirement is unmodified Astryx components, not a hand-drawn approximation.
@@ -15,15 +15,15 @@ Therefore: try extending Blitz's existing DOM bindings to support standard React
 From project-template root:
 
 - `just native-render-preact`: pin and launch upstream Blitz/Boa with its known Preact example.
-- `just native-render-astryx`: build the local React 19/Astryx sample with Vite, then attempt to launch its HTML in Blitz/Boa. This is a **discovery probe**, expected to reveal compatibility failures. A browser build or Preact pass is *not* proof of React/Astryx support.
+- `just native-render-astryx`: build the local React 19/Astryx sample with Vite, then attempt to launch its HTML in Blitz/Boa. This is a live Blitz/Boa native GUI probe; basic DOM interaction is independently proven by the headless regression tests, but CSS painting/window launch remain separate gates.
 
-Requires Git, Cargo/Rust >= 1.91 and Blitz's OS GPU/windowing prerequisites; Astryx additionally needs Bun >= 1.4. The script downloads and executes upstream code. Inspect it first. Upstream checkout is pinned under ignored `.cache/`. No platform smoke has yet been executed for this experiment.
+Requires Git, Cargo/Rust >= 1.91 and Blitz's OS GPU/windowing prerequisites; Astryx additionally needs Bun >= 1.4. The script downloads and executes upstream code. Inspect it first. Upstream checkout is pinned under ignored `.cache/`. Linux headless native runtime smoke has been executed in GitHub Actions; other platforms and graphical display are not yet verified.
 
 ## Executable native JS/DOM evidence
 
 [CI](../../.github/workflows/native-react-blitz.yml) now independently bundles React 19/Astryx, then invokes Blitz's actual Boa-based ScriptDocument using a Rust headless harness. It checks JS exceptions, verifies that the application populated the DOM, and dispatches a real native click into React. This is not a screenshot/paint/layout or accessibility test.
 
-The upstream Preact TodoMVC, minimal React counter and Astryx Button/Theme counter have now passed real Boa execution and click tests on Linux CI. They are hard gates. A **separate vanilla React DOM counter** distinguishes React browser-API failures from Astryx component or CSS failures. Native controlled-input behavior (through Blitz's IME event path) remains an exploratory check until proven. Green CI proves these narrow mount and click cases, **not** full Astryx CSS/paint, accessibility, input, dialogs or production readiness.
+The upstream Preact TodoMVC, minimal React counter and Astryx Button/Theme counter have now passed real Boa execution and click tests on Linux CI. They are hard gates. A **separate vanilla React DOM counter** distinguishes React browser-API failures from Astryx component or CSS failures. Native controlled-input behavior **also passed** for both plain React (with explicit `type="text"`) and unmodified Astryx `TextInput`, after resolving the Blitz layout tree. These are now required CI gates. Green CI proves these specific event/DOM paths, **not** full Astryx CSS/paint, general IME compositions, accessibility, dialogs or production readiness.
 
 Locally, run `just native-render-headless-preact`, `just native-render-headless-react`, and `just native-render-headless-astryx`. Run `just native-render-headless-react-input` and `just native-render-headless-astryx-input` to exercise IME input. Exact dependency commits and JS errors appear in output. The headless harness can also render the full CSS/layout tree using **Vello CPU** into an evidence PNG, independently of GPU-backed window initialization. An independent **experimental native GUI job** also attempts to compile Blitz's real window host and capture a screenshot of the Astryx app on a software-rendered Xvfb display. This probes window/paint rather than just DOM mutation. It is intentionally non-blocking until platform prerequisites and visual output are validated. No renderer is promoted to production by this work.
 
