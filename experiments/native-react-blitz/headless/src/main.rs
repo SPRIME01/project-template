@@ -1,7 +1,7 @@
 //! Runtime smoke test: genuine React/Preact JS execution in Boa/Blitz.
 //! Does not validate graphics, accessibility, CSS, or packaging.
 use blitz_dom::{Document, DocumentConfig};
-use blitz_traits::events::DomEvent;
+use blitz_traits::events::{DomEvent, UiEvent, BlitzImeEvent};
 use blitz_vibey_script::ScriptDocument;
 use keyboard_types::Modifiers;
 use std::{env,fs,path::PathBuf,process};
@@ -41,7 +41,7 @@ fn run(mode: &str, path: PathBuf) -> Result<(), String> {
     let expected = match mode {
        "preact" => "todos",
        "react" => "Count: 0",
-       "astryx" => "Count: 0",
+       "astryx" | "astryx-input" | "react-input" => "Count: 0",
        _ => return Err(format!("unknown mode {mode}"))
     };
     if !before.contains(expected) {
@@ -65,6 +65,28 @@ fn run(mode: &str, path: PathBuf) -> Result<(), String> {
             return Err("Native event failed to update Astryx React state".into());
         }
     }
+    if mode == "astryx-input" || mode == "react-input" {
+        let input_id = {
+            let borrowed = doc.inner();
+            borrowed.query_selector("input").map_err(|e| format!("input selector: {e:?}"))?
+                .ok_or("Missing input control")?
+        };
+        {
+            let mut borrowed = doc.inner_mut();
+            borrowed.set_focus_to(input_id);
+        }
+        // Simulate a real input-method commit through native Blitz event handling;
+        // do not directly call the React setState callback or inject a fake DOM.
+        doc.handle_ui_event(UiEvent::Ime(BlitzImeEvent::Commit("native hello".into())));
+        pump(&mut doc);
+        let input_after = text(&doc);
+        println!("NATIVE_PROBE_AFTER_NATIVE_IME={input_after:?}");
+        let errors = doc.take_js_errors();
+        for error in &errors { eprintln!("NATIVE_PROBE_JS_ERROR_INPUT={error}"); }
+        if !errors.is_empty() || !input_after.contains("Echo: native hello") {
+            return Err("Native IME input did not update React's controlled input".into());
+        }
+    }
     println!("NATIVE_REACT_{mode}_PASS");
     Ok(())
 }
@@ -73,7 +95,7 @@ fn main() {
     let mode = args.next().unwrap_or_default();
     let path = args.next().unwrap_or_default();
     if mode.is_empty() || path.is_empty() {
-        eprintln!("Usage: native-react-blitz-smoke preact|react|astryx FILE.html");
+        eprintln!("Usage: native-react-blitz-smoke preact|react|astryx|react-input|astryx-input FILE.html");
         process::exit(2);
     }
     if let Err(err) = run(&mode, PathBuf::from(path)) {

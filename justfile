@@ -67,3 +67,9 @@ native-render-headless-astryx:
 
 native-render-headless-react:
     bash experiments/native-react-blitz/scripts/probe.sh headless-react
+
+native-render-headless-react-input:
+    bash experiments/native-react-blitz/scripts/probe.sh headless-react-input
+
+native-render-headless-astryx-input:
+    bash experiments/native-react-blitz/scripts/probe.sh headless-astryx-input
