@@ -114,9 +114,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: /tmp/blitz
       - uses: actions/download-artifact@v4
         with:
           name: astryx-native-probe
@@ -124,11 +121,14 @@ jobs:
       - name: Linux native window prerequisites
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb xauth xdotool openbox imagemagick libxkbcommon-dev libfontconfig1-dev libasound2-dev libudev-dev libssl-dev libgl1-mesa-dri
+          sudo apt-get install -y xvfb xauth xdotool openbox imagemagick libxkbcommon-dev libxkbcommon-x11-dev libfontconfig1-dev libasound2-dev libudev-dev libssl-dev libgl1-mesa-dri
       - name: Checkout pinned Blitz
         run: |
           git clone --filter=blob:none https://github.com/DioxusLabs/blitz.git /tmp/blitz
           git -C /tmp/blitz checkout fb8d6c15e9ce062b3b41e71cd48988f0093506cc
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: /tmp/blitz
       - name: Compile actual Blitz native GUI
         working-directory: /tmp/blitz
         run: cargo build --locked --example preact_script
