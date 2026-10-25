@@ -49,3 +49,10 @@ If porting from bevy-react, consider these as donors: `packages/bevy-react/src/r
 Log exact commit hashes, environment, test receipts, screenshots, failures and benchmarks. No promotion to the default desktop route until gates pass.
 
 Reference decision: [ADR 0003](../../docs/decisions/0003-boa-blitz-native-react.md).
+
+## Performance benchmark
+
+CI measures 11 independent fresh Boa processes each for plain React, Astryx, and a deterministic **200-row Astryx** workload (2 warmups each). Each runs real JS mount, native click, native IME input, Stylo/Taffy layout, and Vello CPU raster paint at 980×660. It records wall-clock, mount/click/input/layout/paint phase timings and peak process RSS. An isolated probe embeds compiled Astryx CSS as `<style>` into the same built HTML used by the browser; the headless DOM itself cannot fetch linked CSS unaided. Benchmarking without a loaded author stylesheet is an error.
+
+The CI artifact `native-react-benchmark.json` includes every sample and p50/p95. **This is not an apples-to-apples Tauri/WebView benchmark**: the default shipping app uses a different UI and an OS-managed browser, while this uses an in-memory native document and CPU paint. Until equivalent browser workloads, GPU/native window, and multiple platforms are measured, treat results as a feasibility/performance baseline only.
+

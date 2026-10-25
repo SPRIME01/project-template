@@ -27,9 +27,12 @@ jobs:
       - run: bun install
       - run: bun run typecheck
       - run: bun run build
+      - run: python3 scripts/embed_css.py dist
       - run: |
           test -s dist/index.html
           test -s dist/basic.html
+          test -s dist/native-index.html
+          test -s dist/native-stress.html
           find dist/assets -name '*.js' -size +0c | grep -q .
           ! grep -q '/src/main.tsx' dist/index.html
       - uses: actions/upload-artifact@v4
@@ -66,33 +69,40 @@ jobs:
         id: react
         run: |
           set -o pipefail
-          cargo run --manifest-path experiments/native-react-blitz/headless/Cargo.toml --release -- react experiments/native-react-blitz/dist/basic.html 2>&1 | tee /tmp/react.log
+          cargo run --manifest-path experiments/native-react-blitz/headless/Cargo.toml --release -- react experiments/native-react-blitz/dist/native-basic.html 2>&1 | tee /tmp/react.log
       - name: Execute React DOM / Astryx and assert native click
         id: astryx
         run: |
           set -o pipefail
-          cargo run --manifest-path experiments/native-react-blitz/headless/Cargo.toml --release -- astryx experiments/native-react-blitz/dist/index.html 2>&1 | tee /tmp/astryx.log
+          cargo run --manifest-path experiments/native-react-blitz/headless/Cargo.toml --release -- astryx experiments/native-react-blitz/dist/native-index.html 2>&1 | tee /tmp/astryx.log
       - name: React DOM controlled native IME input
         id: react_input
         run: |
           set -o pipefail
-          cargo run --manifest-path experiments/native-react-blitz/headless/Cargo.toml --release -- react-input experiments/native-react-blitz/dist/basic.html 2>&1 | tee /tmp/react-input.log
+          cargo run --manifest-path experiments/native-react-blitz/headless/Cargo.toml --release -- react-input experiments/native-react-blitz/dist/native-basic.html 2>&1 | tee /tmp/react-input.log
       - name: Astryx controlled native IME input
         id: astryx_input
         run: |
           set -o pipefail
-          cargo run --manifest-path experiments/native-react-blitz/headless/Cargo.toml --release -- astryx-input experiments/native-react-blitz/dist/index.html 2>&1 | tee /tmp/astryx-input.log
+          cargo run --manifest-path experiments/native-react-blitz/headless/Cargo.toml --release -- astryx-input experiments/native-react-blitz/dist/native-index.html 2>&1 | tee /tmp/astryx-input.log
       - name: Paint Astryx CSS and native DOM to PNG using Vello CPU
         run: |
           set -o pipefail
-          cargo run --manifest-path experiments/native-react-blitz/headless/Cargo.toml --release -- astryx experiments/native-react-blitz/dist/index.html /tmp/astryx-boa-cpu.png 2>&1 | tee /tmp/astryx-cpu.log
+          cargo run --manifest-path experiments/native-react-blitz/headless/Cargo.toml --release -- astryx experiments/native-react-blitz/dist/native-index.html /tmp/astryx-boa-cpu.png 2>&1 | tee /tmp/astryx-cpu.log
           test -s /tmp/astryx-boa-cpu.png
           file /tmp/astryx-boa-cpu.png
+          grep -E "NATIVE_CPU_PAINT_NONWHITE_RATIO=" /tmp/astryx-cpu.log
+      - name: Benchmark cold React, Astryx and 200-row Astryx
+        env:
+          BENCH_SAMPLES: "11"
+        run: |
+          python3 experiments/native-react-blitz/scripts/benchmark.py             experiments/native-react-blitz/headless/target/release/native-react-blitz-smoke             experiments/native-react-blitz/dist/             /tmp/native-react-benchmark.json | tee /tmp/native-bench.txt
       - name: Summarize native execution receipts
         if: always()
         run: |
           echo '## Actual Boa/Blitz execution' >> "$GITHUB_STEP_SUMMARY"
           echo 'Preact, React DOM, Astryx and native IME text editing are mandatory headless gates. CSS painting and native Winit packaging remain separate.' >> "$GITHUB_STEP_SUMMARY"
+          if [ -f /tmp/native-bench.txt ]; then cat /tmp/native-bench.txt >> "$GITHUB_STEP_SUMMARY"; fi
           if [ -f /tmp/react-input.log ]; then tail -n 50 /tmp/react-input.log >> "$GITHUB_STEP_SUMMARY"; fi
           if [ -f /tmp/astryx-input.log ]; then tail -n 50 /tmp/astryx-input.log >> "$GITHUB_STEP_SUMMARY"; fi
           if [ -f /tmp/react.log ]; then tail -n 50 /tmp/react.log >> "$GITHUB_STEP_SUMMARY"; fi
@@ -109,6 +119,8 @@ jobs:
             /tmp/astryx-input.log
             /tmp/astryx-cpu.log
             /tmp/astryx-boa-cpu.png
+            /tmp/native-react-benchmark.json
+            /tmp/native-bench.txt
           if-no-files-found: ignore
 
   native-gui-screenshot:
@@ -141,7 +153,7 @@ jobs:
       - name: Launch Astryx GUI under Xvfb and capture rendering
         working-directory: /tmp/blitz
         run: |
-          bash "$GITHUB_WORKSPACE/experiments/native-react-blitz/scripts/gui-smoke.sh" "$GITHUB_WORKSPACE/experiments/native-react-blitz/dist/index.html" /tmp/blitz-astryx-gui.log /tmp/blitz-astryx-gui.png
+          bash "$GITHUB_WORKSPACE/experiments/native-react-blitz/scripts/gui-smoke.sh" "$GITHUB_WORKSPACE/experiments/native-react-blitz/dist/native-index.html" /tmp/blitz-astryx-gui.log /tmp/blitz-astryx-gui.png
       - uses: actions/upload-artifact@v4
         if: always()
         with:

@@ -9,6 +9,7 @@ export default defineConfig({
       input: {
         astryx: fileURLToPath(new URL("./index.html", import.meta.url)),
         react: fileURLToPath(new URL("./basic.html", import.meta.url)),
+        stress: fileURLToPath(new URL("./stress.html", import.meta.url)),
       },
     },
   },
