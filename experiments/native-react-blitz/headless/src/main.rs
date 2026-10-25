@@ -3,6 +3,7 @@
 use blitz_dom::{Document, DocumentConfig};
 use blitz_traits::events::{DomEvent, UiEvent, BlitzImeEvent};
 use blitz_vibey_script::ScriptDocument;
+use blitz_traits::shell::{Viewport, ColorScheme};
 use keyboard_types::Modifiers;
 use std::{env,fs,path::PathBuf,process};
 use url::Url;
@@ -73,7 +74,7 @@ fn run(mode: &str, path: PathBuf, png_path: Option<&str>) -> Result<(), String> 
     let url = Url::from_file_path(&path).map_err(|_| "Invalid local file path")?;
     let mut doc = ScriptDocument::from_html(
         &html,
-        DocumentConfig { base_url: Some(url.to_string()), ..Default::default() },
+        DocumentConfig { base_url: Some(url.to_string()), viewport: Some(Viewport::new(980,660,1.0,ColorScheme::Light)), ..Default::default() },
     ).without_timer_thread().with_virtual_time();
     doc.execute_scripts();
     pump(&mut doc);
@@ -166,7 +167,7 @@ fn bench(mode: &str, path: PathBuf) -> Result<(), String> {
     let url = Url::from_file_path(&path).map_err(|_| "Invalid file URL")?;
     let begin = Instant::now();
     let mut doc = ScriptDocument::from_html(
-        &html, DocumentConfig {base_url:Some(url.to_string()), ..Default::default()}
+        &html, DocumentConfig {base_url:Some(url.to_string()),viewport:Some(Viewport::new(980,660,1.0,ColorScheme::Light)), ..Default::default()}
     ).without_timer_thread().with_virtual_time();
     doc.execute_scripts();
     pump(&mut doc);
@@ -175,6 +176,10 @@ fn bench(mode: &str, path: PathBuf) -> Result<(), String> {
     if !before.contains("Count: 0") {return Err("React did not mount expected counter".into());}
     if !doc.take_js_errors().is_empty(){return Err("JS exceptions during mount".into());}
     let stylesheets = doc.inner().author_stylesheets().count();
+    let mounted_rows = doc.inner().query_selector_all("li").map_err(|e| format!("row selector: {e:?}"))?.len();
+    if mode=="stress" && mounted_rows != 200 {
+        return Err(format!("stress fixture rendered {mounted_rows} rows rather than 200"));
+    }
     if (mode=="astryx"||mode=="stress") && stylesheets==0 {
         return Err("no author CSS parsed; invalid styling benchmark".into());
     }
@@ -218,7 +223,7 @@ fn bench(mode: &str, path: PathBuf) -> Result<(), String> {
     let dark=pixels.chunks_exact(4).filter(|px|px[0]<240||px[1]<240||px[2]<240).count();
     let nonwhite=dark as f64/(W as f64*H as f64);
     if nonwhite < 0.0001 { return Err(format!("no visible painting: {nonwhite:.6}")); }
-    println!("BENCH_SAMPLE mode={mode} mount_ms={mount_ms:.4} click_ms={click_ms:.4} layout_ms={layout_ms:.4} input_ms={input_ms:.4} paint_ms={paint_ms:.4} stylesheets={stylesheets} nonwhite_ratio={nonwhite:.6} js_bytes={}",
+    println!("BENCH_SAMPLE mode={mode} mount_ms={mount_ms:.4} click_ms={click_ms:.4} layout_ms={layout_ms:.4} input_ms={input_ms:.4} paint_ms={paint_ms:.4} stylesheets={stylesheets} dom_rows={mounted_rows} nonwhite_ratio={nonwhite:.6} html_bytes={}",
         fs::metadata(&path).map_err(|e|e.to_string())?.len());
     Ok(())
 }
