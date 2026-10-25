@@ -96,6 +96,7 @@ jobs:
         env:
           BENCH_SAMPLES: "11"
         run: |
+          set -o pipefail
           python3 experiments/native-react-blitz/scripts/benchmark.py             experiments/native-react-blitz/headless/target/release/native-react-blitz-smoke             experiments/native-react-blitz/dist/             /tmp/native-react-benchmark.json | tee /tmp/native-bench.txt
       - name: Summarize native execution receipts
         if: always()

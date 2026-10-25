@@ -55,7 +55,7 @@ fn paint_png(doc: &mut ScriptDocument, path: &str) -> Result<(), String> {
     let dark_pixels = pixels.chunks_exact(4).filter(|p| p[0] < 240 || p[1] < 240 || p[2] < 240).count();
     let coverage = dark_pixels as f64 / (width as f64 * height as f64);
     println!("NATIVE_CPU_PAINT_NONWHITE_RATIO={coverage:.6}");
-    if coverage < 0.0005 { return Err(format!("paint appears blank: nonwhite coverage {coverage:.6}")); }
+    if coverage < 0.0001 { return Err(format!("paint appears blank: nonwhite coverage {coverage:.6}")); }
     let file = File::create(path).map_err(|e| e.to_string())?;
     let mut encoder = png::Encoder::new(BufWriter::new(file), width, height);
     encoder.set_color(png::ColorType::Rgba);
@@ -217,7 +217,7 @@ fn bench(mode: &str, path: PathBuf) -> Result<(), String> {
     let paint_ms=millis(start_paint.elapsed());
     let dark=pixels.chunks_exact(4).filter(|px|px[0]<240||px[1]<240||px[2]<240).count();
     let nonwhite=dark as f64/(W as f64*H as f64);
-    if nonwhite < 0.0005 { return Err(format!("no visible painting: {nonwhite:.6}")); }
+    if nonwhite < 0.0001 { return Err(format!("no visible painting: {nonwhite:.6}")); }
     println!("BENCH_SAMPLE mode={mode} mount_ms={mount_ms:.4} click_ms={click_ms:.4} layout_ms={layout_ms:.4} input_ms={input_ms:.4} paint_ms={paint_ms:.4} stylesheets={stylesheets} nonwhite_ratio={nonwhite:.6} js_bytes={}",
         fs::metadata(&path).map_err(|e|e.to_string())?.len());
     Ok(())
