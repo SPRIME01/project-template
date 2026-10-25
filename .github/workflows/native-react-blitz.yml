@@ -140,7 +140,7 @@ jobs:
       - name: Linux native window prerequisites
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb xauth xdotool openbox imagemagick libxkbcommon-dev libxkbcommon-x11-dev libfontconfig1-dev libasound2-dev libudev-dev libssl-dev libgl1-mesa-dri
+          sudo apt-get install -y xvfb xauth xdotool openbox imagemagick libxkbcommon-dev libxkbcommon-x11-dev libfontconfig1-dev libasound2-dev libudev-dev libssl-dev libgl1-mesa-dri mesa-vulkan-drivers vulkan-tools libvulkan1
       - name: Checkout pinned Blitz
         run: |
           git clone --filter=blob:none https://github.com/DioxusLabs/blitz.git /tmp/blitz

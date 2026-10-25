@@ -8,7 +8,13 @@ command -v xvfb-run >/dev/null
 command -v xdotool >/dev/null
 command -v import >/dev/null
 command -v identify >/dev/null
-export WGPU_BACKEND=gl LIBGL_ALWAYS_SOFTWARE=1
+# Force Mesa lavapipe software Vulkan on CI/Xvfb. OpenGL lacks a surface
+# for Blitz's Vello/WGPU window renderer on this runner.
+export WGPU_BACKEND=vulkan LIBGL_ALWAYS_SOFTWARE=1
+if [ -f /usr/share/vulkan/icd.d/lvp_icd.x86_64.json ]; then
+  export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json
+fi
+vulkaninfo --summary | head -n 40 || true
 xvfb-run -a -s "-screen 0 1280x800x24" bash -c '
   set -euo pipefail
   html="$1"; log="$2"; screenshot="$3"
