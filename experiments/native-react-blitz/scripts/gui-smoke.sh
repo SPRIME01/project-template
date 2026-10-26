@@ -29,7 +29,7 @@ xvfb-run -a -s "-screen 0 1280x800x24" bash -c '
   selected=""
   for attempt in $(seq 1 40); do
     if ! kill -0 "$child" 2>/dev/null; then tail -n 100 "$log"; exit 1; fi
-    # The upstream example deliberately uses Winit's DEFAULT title.
+    # The upstream example uses the default Winit window title.
     # Identify visible windows by owner process instead of app-specific title.
     for wid in $(xdotool search --onlyvisible --name "." 2>/dev/null || true); do
       title="$(xdotool getwindowname "$wid" 2>/dev/null || true)"
