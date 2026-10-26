@@ -62,3 +62,7 @@ The CI artifact `native-react-benchmark.json` includes every sample and p50/p95.
 The 200-row stress probe intentionally rerenders all rows on unrelated state changes.
 The `stress-memo` case uses `React.memo` for each row, with stable props.
 Comparing its click/input latencies to the naive 200-row case distinguishes unnecessary React work from a general Boa/Blitz scalability problem. Neither case emulates Cognate Workbench's actual component hierarchy.
+
+### Important font configuration
+
+A CPU screenshot originally showed buttons and input outlines with **no text**. Root cause in the test harness: `blitz-dom` had `default-features = false`, disabling `system-fonts` (the upstream crate's default includes it). The harness now enables `features = ["system-fonts"]`, and CI explicitly installs DejaVu fonts. **Do not infer production visual parity until the new screenshot is inspected.** Font-feature changes can alter mount/layout/paint benchmarks, so earlier numbers are superseded.

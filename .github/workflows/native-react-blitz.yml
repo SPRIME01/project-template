@@ -59,6 +59,11 @@ jobs:
       - run: |
           git clone --filter=blob:none https://github.com/DioxusLabs/blitz.git /tmp/blitz
           git -C /tmp/blitz checkout fb8d6c15e9ce062b3b41e71cd48988f0093506cc
+      - name: Install headless system fonts for text layout and paint
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y fontconfig fonts-dejavu-core
+          fc-match sans-serif
       - name: Compile headless Boa / Blitz test
         run: cargo build --manifest-path experiments/native-react-blitz/headless/Cargo.toml --release
       - name: Prove upstream Preact works inside Boa / Blitz
