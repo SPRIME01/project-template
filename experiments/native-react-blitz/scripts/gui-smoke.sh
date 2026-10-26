@@ -15,9 +15,10 @@ if [ -f /usr/share/vulkan/icd.d/lvp_icd.x86_64.json ]; then
   export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json
 fi
 vulkaninfo --summary | head -n 40 || true
+export BLITZ_TEST_HTML="$html" BLITZ_TEST_LOG="$log" BLITZ_TEST_PNG="$out"
 xvfb-run -a -s "-screen 0 1280x800x24" bash -c '
   set -euo pipefail
-  html="$1"; log="$2"; screenshot="$3"
+  html="$BLITZ_TEST_HTML"; log="$BLITZ_TEST_LOG"; screenshot="$BLITZ_TEST_PNG"
   openbox > /tmp/blitz-openbox.log 2>&1 &
   wm=$!
   cleanup() { kill "$child" "$wm" 2>/dev/null || true; wait "$child" 2>/dev/null || true; }
@@ -52,7 +53,7 @@ xvfb-run -a -s "-screen 0 1280x800x24" bash -c '
   test -s "$screenshot"
   echo "BLITZ_NATIVE_WINDOW_CAPTURED"
   identify "$screenshot"
-' bash "$html" "$log" "$out"
+'
 colors="$(identify -format '%k' "$out")"
 echo "BLITZ_GUI_UNIQUE_COLORS=$colors"
 test "$colors" -gt 5 || { echo "Screen appears blank/uniform" >&2; exit 1; }
