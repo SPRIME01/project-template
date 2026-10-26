@@ -62,7 +62,7 @@ jobs:
       - name: Install headless system fonts for text layout and paint
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y fontconfig fonts-dejavu-core
+          sudo apt-get install -y fontconfig libfontconfig1-dev fonts-dejavu-core
           fc-match sans-serif
       - name: Compile headless Boa / Blitz test
         run: cargo build --manifest-path experiments/native-react-blitz/headless/Cargo.toml --release
