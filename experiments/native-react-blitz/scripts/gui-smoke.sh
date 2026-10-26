@@ -25,11 +25,21 @@ xvfb-run -a -s "-screen 0 1280x800x24" bash -c '
   cargo run --locked --example preact_script -- "$html" > "$log" 2>&1 &
   child=$!
   ready=0
+  selected=""
   for attempt in $(seq 1 40); do
     if ! kill -0 "$child" 2>/dev/null; then tail -n 100 "$log"; exit 1; fi
-    if xdotool search --onlyvisible --name "React|Blitz|Preact|Todo|Native" > /tmp/blitz-windows.txt 2>/dev/null; then
-      ready=1; break
-    fi
+    # The upstream example deliberately uses Winit's DEFAULT title.
+    # Identify visible windows by owner process instead of app-specific title.
+    for wid in $(xdotool search --onlyvisible --name "." 2>/dev/null || true); do
+      title="$(xdotool getwindowname "$wid" 2>/dev/null || true)"
+      pid="$(xdotool getwindowpid "$wid" 2>/dev/null || true)"
+      executable="$(ps -p "$pid" -o args= 2>/dev/null || true)"
+      echo "WINDOW_CANDIDATE id=$wid title=$title pid=$pid exe=$executable"
+      if [[ "$executable" == *preact_script* ]]; then
+        ready=1; selected="$wid"; break
+      fi
+    done
+    if [ "$ready" -eq 1 ]; then break; fi
     sleep 1
   done
   if [ "$ready" != 1 ]; then
@@ -38,7 +48,7 @@ xvfb-run -a -s "-screen 0 1280x800x24" bash -c '
     exit 1
   fi
   sleep 2
-  import -window root "$screenshot"
+  import -window "$selected" "$screenshot"
   test -s "$screenshot"
   echo "BLITZ_NATIVE_WINDOW_CAPTURED"
   identify "$screenshot"
