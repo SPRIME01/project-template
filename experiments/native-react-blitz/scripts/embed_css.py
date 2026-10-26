@@ -8,7 +8,7 @@ import sys
 
 root=Path(sys.argv[1]).resolve()
 links=0
-for source in ("index.html","basic.html","stress.html"):
+for source in ("index.html","basic.html","stress.html","stress-memo.html"):
     html=(root/source).read_text()
     def replace(m):
         global links

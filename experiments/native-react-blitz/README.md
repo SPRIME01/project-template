@@ -56,3 +56,9 @@ CI measures 11 independent fresh Boa processes each for plain React, Astryx, and
 
 The CI artifact `native-react-benchmark.json` includes every sample and p50/p95. **This is not an apples-to-apples Tauri/WebView benchmark**: the default shipping app uses a different UI and an OS-managed browser, while this uses an in-memory native document and CPU paint. Until equivalent browser workloads, GPU/native window, and multiple platforms are measured, treat results as a feasibility/performance baseline only.
 
+
+### Memoization control
+
+The 200-row stress probe intentionally rerenders all rows on unrelated state changes.
+The `stress-memo` case uses `React.memo` for each row, with stable props.
+Comparing its click/input latencies to the naive 200-row case distinguishes unnecessary React work from a general Boa/Blitz scalability problem. Neither case emulates Cognate Workbench's actual component hierarchy.

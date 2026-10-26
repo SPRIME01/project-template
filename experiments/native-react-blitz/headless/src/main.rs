@@ -177,10 +177,10 @@ fn bench(mode: &str, path: PathBuf) -> Result<(), String> {
     if !doc.take_js_errors().is_empty(){return Err("JS exceptions during mount".into());}
     let stylesheets = doc.inner().author_stylesheets().count();
     let mounted_rows = doc.inner().query_selector_all("li").map_err(|e| format!("row selector: {e:?}"))?.len();
-    if mode=="stress" && mounted_rows != 200 {
+    if (mode=="stress" || mode=="stress-memo") && mounted_rows != 200 {
         return Err(format!("stress fixture rendered {mounted_rows} rows rather than 200"));
     }
-    if (mode=="astryx"||mode=="stress") && stylesheets==0 {
+    if (mode=="astryx"||mode=="stress"||mode=="stress-memo") && stylesheets==0 {
         return Err("no author CSS parsed; invalid styling benchmark".into());
     }
     let click = {

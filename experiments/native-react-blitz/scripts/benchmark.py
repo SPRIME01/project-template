@@ -15,7 +15,7 @@ import time
 binary=pathlib.Path(sys.argv[1]).resolve()
 dist=pathlib.Path(sys.argv[2]).resolve()
 report=pathlib.Path(sys.argv[3]).resolve()
-modes={"react":"native-basic.html","astryx":"native-index.html","stress":"native-stress.html"}
+modes={"react":"native-basic.html","astryx":"native-index.html","stress":"native-stress.html","stress-memo":"native-stress-memo.html"}
 total=int(os.environ.get("BENCH_SAMPLES","11"))
 assert 5 <= total <= 100, total
 raw=[]
